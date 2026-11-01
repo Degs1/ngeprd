@@ -1,73 +1,50 @@
 "use client";
 
-import React, { useCallback } from "react";
+import React from "react";
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
   Controls,
   MiniMap,
-  useNodesState,
-  useEdgesState,
-  addEdge,
-  type Node,
-  type Edge,
-  type Connection,
+  type NodeTypes,
 } from "@xyflow/react";
+import QuestionCardNode from "./QuestionCardNode";
+import { useCanvasStore } from "@/store/useCanvasStore";
 
-const initialNodes: Node[] = [
-  {
-    id: "start-node",
-    type: "default",
-    position: { x: 300, y: 250 },
-    data: {
-      label: (
-        <div className="p-2 text-center select-none">
-          <div className="font-semibold text-sm text-slate-800">
-            Start Planning
-          </div>
-          <div className="text-xs text-slate-500 mt-1">
-            Ide Proyek: Rancang alur idemu di sini
-          </div>
-        </div>
-      ),
-    },
-    style: {
-      background: "#ffffff",
-      border: "1px solid #cbd5e1",
-      borderRadius: "12px",
-      boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
-      padding: "8px 12px",
-      minWidth: "220px",
-    },
-  },
-];
-
-const initialEdges: Edge[] = [];
+const nodeTypes: NodeTypes = {
+  questionCard: QuestionCardNode,
+};
 
 export default function FlowCanvas() {
-  const [nodes, , onNodesChange] = useNodesState(initialNodes);
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
-
-  const onConnect = useCallback(
-    (params: Connection) => setEdges((eds: Edge[]) => addEdge(params, eds)),
-    [setEdges]
-  );
+  const nodes = useCanvasStore((state) => state.nodes);
+  const edges = useCanvasStore((state) => state.edges);
+  const onNodesChange = useCanvasStore((state) => state.onNodesChange);
+  const onEdgesChange = useCanvasStore((state) => state.onEdgesChange);
+  const onConnect = useCanvasStore((state) => state.onConnect);
 
   return (
     <div className="w-full h-full relative">
       <ReactFlow
         nodes={nodes}
         edges={edges}
+        nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         fitView
+        fitViewOptions={{ padding: 0.25 }}
       >
         <Background variant={BackgroundVariant.Dots} gap={16} size={1} color="#94a3b8" />
         <Controls />
         <MiniMap
-          nodeColor="#94a3b8"
+          nodeColor={(node) => {
+            if (node.type === "questionCard") {
+              const isAnswered = (node.data as { status?: string })?.status === "answered";
+              return isAnswered ? "#10b981" : "#6366f1";
+            }
+            return "#94a3b8";
+          }}
           maskColor="rgba(241, 245, 249, 0.7)"
           className="rounded-lg shadow-sm border border-slate-200"
         />

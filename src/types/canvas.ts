@@ -1,0 +1,55 @@
+import type {
+  Node,
+  Edge,
+  OnNodesChange,
+  OnEdgesChange,
+  Connection,
+} from "@xyflow/react";
+
+export interface QuestionOption {
+  id: string;
+  label: string;
+  description?: string;
+}
+
+export type QuestionStatus = "pending" | "answered";
+
+export interface QuestionNodeData extends Record<string, unknown> {
+  category?: string;
+  title?: string;
+  question: string;
+  options: QuestionOption[];
+  selectedOptionId?: string | null;
+  customAnswer?: string;
+  status: QuestionStatus;
+}
+
+export type CanvasNode = Node<QuestionNodeData | Record<string, unknown>>;
+
+export interface AnswerEntry {
+  optionId?: string;
+  answer: string;
+  category?: string;
+}
+
+export interface CanvasState {
+  nodes: CanvasNode[];
+  edges: Edge[];
+  answersMap: Record<string, AnswerEntry>;
+
+  // React Flow event handlers
+  onNodesChange: OnNodesChange<CanvasNode>;
+  onEdgesChange: OnEdgesChange;
+  onConnect: (connection: Connection) => void;
+
+  // Store actions
+  setNodes: (nodes: CanvasNode[] | ((prev: CanvasNode[]) => CanvasNode[])) => void;
+  setEdges: (edges: Edge[] | ((prev: Edge[]) => Edge[])) => void;
+  addNode: (node: CanvasNode) => void;
+  addNodes: (nodes: CanvasNode[]) => void;
+  addEdge: (edge: Edge) => void;
+  selectOption: (nodeId: string, optionId: string) => void;
+  setCustomAnswer: (nodeId: string, answer: string) => void;
+  updateNodeStatus: (nodeId: string, status: QuestionStatus) => void;
+  resetCanvas: () => void;
+}
