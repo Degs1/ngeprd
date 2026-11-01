@@ -1,5 +1,5 @@
 import { createOpenAI } from "@ai-sdk/openai";
-import { generateText } from "ai";
+import { generateText, streamText } from "ai";
 import {
   QuestionsResponseSchema,
   QuestionItemSchema,
@@ -8,6 +8,12 @@ import {
   type QuestionItem,
 } from "./prompts";
 import { getFallbackQuestions } from "./fallback";
+import {
+  getPrdSystemPrompt,
+  buildPrdPrompt,
+  normalizeAnswers,
+} from "./prdPrompt";
+import { generateFallbackPrd } from "./fallbackPrd";
 
 /**
  * Strips markdown code block wrappers (e.g. ```json ... ```) and leading/trailing whitespace.
@@ -44,8 +50,21 @@ export function extractJsonFromText(raw: string): string {
 }
 
 /**
+ * Strips outer markdown code block wrapper if the LLM wrapped the whole document in ```markdown ... ```.
+ */
+export function extractMarkdownFromText(raw: string): string {
+  let text = raw.trim();
+  const mdMatch = text.match(/^```(?:markdown|md)?\s*\n([\s\S]*?)\n```$/i);
+  if (mdMatch && mdMatch[1]) {
+    text = mdMatch[1].trim();
+  }
+  return text;
+}
+
+/**
  * Custom fetch wrapper for 9router:
- * Ensures stream=false is sent to prevent raw SSE chunk streams on non-streaming calls.
+ * Ensures stream=false is sent on calls where stream is undefined (like generateText)
+ * while preserving stream=true for streaming calls (like streamText).
  */
 const customFetch = async (
   input: RequestInfo | URL,
@@ -54,7 +73,7 @@ const customFetch = async (
   if (init && init.body && typeof init.body === "string") {
     try {
       const parsed = JSON.parse(init.body);
-      if (parsed.stream === undefined || parsed.stream === true) {
+      if (parsed.stream === undefined) {
         parsed.stream = false;
         init = {
           ...init,
@@ -142,4 +161,64 @@ export async function generateQuestions(idea: string): Promise<QuestionItem[]> {
     );
     return fallback;
   }
+}
+
+/**
+ * Generates a complete Markdown PRD document with task breakdown.
+ * Falls back to high-quality template synthesis if upstream AI fails.
+ */
+export async function generatePrd(
+  idea: string,
+  answersInput?: unknown
+): Promise<string> {
+  const fallback = generateFallbackPrd(idea, answersInput);
+
+  try {
+    const openai = getAiClient();
+    const modelName = process.env.AI_MODEL || "gemini";
+
+    const { text } = await generateText({
+      model: openai.chat(modelName),
+      system: getPrdSystemPrompt(),
+      prompt: buildPrdPrompt(idea, answersInput),
+      temperature: 0.4,
+    });
+
+    const cleanedMarkdown = extractMarkdownFromText(text);
+
+    // Basic validity check: must contain minimal PRD headings
+    if (
+      cleanedMarkdown.includes("#") &&
+      (cleanedMarkdown.includes("Ringkasan") || cleanedMarkdown.includes("Summary") || cleanedMarkdown.includes("Task"))
+    ) {
+      return cleanedMarkdown;
+    }
+
+    console.warn(
+      "[AI PRD] Generated text does not contain expected PRD headings, using fallback template:",
+      text.slice(0, 100)
+    );
+    return fallback;
+  } catch (err) {
+    console.warn(
+      "[AI PRD] Upstream AI failed or timed out, using fallback template:",
+      err instanceof Error ? err.message : String(err)
+    );
+    return fallback;
+  }
+}
+
+/**
+ * Initiates a streaming text generation for PRD synthesis.
+ */
+export async function streamPrd(idea: string, answersInput?: unknown) {
+  const openai = getAiClient();
+  const modelName = process.env.AI_MODEL || "gemini";
+
+  return streamText({
+    model: openai.chat(modelName),
+    system: getPrdSystemPrompt(),
+    prompt: buildPrdPrompt(idea, answersInput),
+    temperature: 0.4,
+  });
 }
