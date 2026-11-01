@@ -11,6 +11,7 @@ import type {
   QuestionNodeData,
   QuestionStatus,
 } from "@/types/canvas";
+import { getLayoutedElements } from "@/lib/layout/dagre";
 
 export const initialNodes: CanvasNode[] = [
   {
@@ -217,6 +218,20 @@ export const useCanvasStore = create<CanvasState>((set) => ({
           : node
       ),
     }));
+  },
+
+  applyLayout: (direction = "LR") => {
+    set((state) => {
+      const { nodes: layoutedNodes, edges: layoutedEdges } = getLayoutedElements(
+        state.nodes,
+        state.edges,
+        { direction }
+      );
+      return {
+        nodes: layoutedNodes,
+        edges: layoutedEdges,
+      };
+    });
   },
 
   resetCanvas: () => {

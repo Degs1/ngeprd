@@ -10,9 +10,11 @@
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.106",
+    "@types/dagre": "^0.7.54",
     "@xyflow/react": "^12.3.6",
     "ai": "^7.0.159",
     "clsx": "^2.1.1",
+    "dagre": "^0.8.5",
     "lucide-react": "^0.460.0",
     "next": "14.2.35",
     "react": "^18.3.1",

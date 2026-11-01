@@ -14,6 +14,12 @@ export interface QuestionOption {
 
 export type QuestionStatus = "pending" | "answered";
 
+export interface IdeaNodeData extends Record<string, unknown> {
+  label?: string;
+  idea?: string;
+  createdAt?: string;
+}
+
 export interface QuestionNodeData extends Record<string, unknown> {
   category?: string;
   title?: string;
@@ -24,7 +30,7 @@ export interface QuestionNodeData extends Record<string, unknown> {
   status: QuestionStatus;
 }
 
-export type CanvasNode = Node<QuestionNodeData | Record<string, unknown>>;
+export type CanvasNode = Node<QuestionNodeData | IdeaNodeData | Record<string, unknown>>;
 
 export interface AnswerEntry {
   optionId?: string;
@@ -51,5 +57,6 @@ export interface CanvasState {
   selectOption: (nodeId: string, optionId: string) => void;
   setCustomAnswer: (nodeId: string, answer: string) => void;
   updateNodeStatus: (nodeId: string, status: QuestionStatus) => void;
+  applyLayout: (direction?: "TB" | "LR") => void;
   resetCanvas: () => void;
 }
