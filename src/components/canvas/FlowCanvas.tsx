@@ -26,6 +26,9 @@ const nodeTypes: NodeTypes = {
 function FlowCanvasContent() {
   const nodes = useCanvasStore((state) => state.nodes);
   const edges = useCanvasStore((state) => state.edges);
+  const answeredCount = useCanvasStore((state) => state.answeredCount);
+  const pendingCount = useCanvasStore((state) => state.pendingCount);
+  const totalCount = useCanvasStore((state) => state.totalCount);
   const onNodesChange = useCanvasStore((state) => state.onNodesChange);
   const onEdgesChange = useCanvasStore((state) => state.onEdgesChange);
   const onConnect = useCanvasStore((state) => state.onConnect);
@@ -78,8 +81,22 @@ function FlowCanvasContent() {
           </div>
         </div>
 
-        {/* Action Controls */}
+        {/* Action Controls & Progress Indicator */}
         <div className="pointer-events-auto flex items-center gap-2">
+          {totalCount > 0 && (
+            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-lg shadow-xs border border-slate-200 text-xs">
+              <div className="flex items-center gap-1.5 font-medium text-slate-700">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span>{answeredCount} Terjawab</span>
+              </div>
+              <span className="text-slate-300">/</span>
+              <div className="flex items-center gap-1.5 font-medium text-slate-500">
+                <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
+                <span>{pendingCount} Pending</span>
+              </div>
+            </div>
+          )}
+
           <button
             type="button"
             onClick={handleLayout}

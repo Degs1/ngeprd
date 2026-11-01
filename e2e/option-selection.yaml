@@ -1,0 +1,13 @@
+name: Option Selection and Custom Answer
+url: http://localhost:3000
+---
+- assertVisible:
+    text: "ngePRD"
+- assertVisible:
+    text: "Pending"
+- tapOn:
+    text: "Next.js 14 + Tailwind CSS"
+- assertVisible:
+    text: "Answered"
+- assertVisible:
+    text: "1 Terjawab"

@@ -245,8 +245,8 @@ export default function IdeaInputModal({
               id="idea-input"
               rows={3}
               value={idea}
-              onChange={(e) => setIdea(e.target.value)}
-              onKeyDown={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setIdea(e.target.value)}
+              onKeyDown={(e: React.KeyboardEvent<HTMLTextAreaElement>) => {
                 if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
                   e.preventDefault();
                   handleSubmit();

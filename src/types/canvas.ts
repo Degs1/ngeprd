@@ -38,10 +38,21 @@ export interface AnswerEntry {
   category?: string;
 }
 
+export interface AnswerCounts {
+  answered: number;
+  pending: number;
+  total: number;
+}
+
 export interface CanvasState {
   nodes: CanvasNode[];
   edges: Edge[];
   answersMap: Record<string, AnswerEntry>;
+
+  // Answer statistics
+  answeredCount: number;
+  pendingCount: number;
+  totalCount: number;
 
   // React Flow event handlers
   onNodesChange: OnNodesChange<CanvasNode>;
@@ -56,7 +67,13 @@ export interface CanvasState {
   addEdge: (edge: Edge) => void;
   selectOption: (nodeId: string, optionId: string) => void;
   setCustomAnswer: (nodeId: string, answer: string) => void;
+  setAnswer: (
+    nodeId: string,
+    selectedOption?: string | null,
+    customAnswer?: string
+  ) => void;
   updateNodeStatus: (nodeId: string, status: QuestionStatus) => void;
+  getAnswerCounts: () => AnswerCounts;
   applyLayout: (direction?: "TB" | "LR") => void;
   resetCanvas: () => void;
 }
