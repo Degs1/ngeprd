@@ -14,8 +14,9 @@ import {
 import QuestionCardNode from "./QuestionCardNode";
 import IdeaCardNode from "./IdeaCardNode";
 import IdeaInputModal from "./IdeaInputModal";
+import TopBar from "./TopBar";
+import PrdDrawer from "@/components/prd/PrdDrawer";
 import { useCanvasStore } from "@/store/useCanvasStore";
-import { Sparkles, LayoutGrid, RotateCcw } from "lucide-react";
 
 const nodeTypes: NodeTypes = {
   questionCard: QuestionCardNode,
@@ -26,19 +27,18 @@ const nodeTypes: NodeTypes = {
 function FlowCanvasContent() {
   const nodes = useCanvasStore((state) => state.nodes);
   const edges = useCanvasStore((state) => state.edges);
-  const answeredCount = useCanvasStore((state) => state.answeredCount);
-  const pendingCount = useCanvasStore((state) => state.pendingCount);
-  const totalCount = useCanvasStore((state) => state.totalCount);
   const onNodesChange = useCanvasStore((state) => state.onNodesChange);
   const onEdgesChange = useCanvasStore((state) => state.onEdgesChange);
   const onConnect = useCanvasStore((state) => state.onConnect);
   const applyLayout = useCanvasStore((state) => state.applyLayout);
   const resetCanvas = useCanvasStore((state) => state.resetCanvas);
+  const setPrdDrawerOpen = useCanvasStore((state) => state.setPrdDrawerOpen);
+  const generatePrd = useCanvasStore((state) => state.generatePrd);
 
   const { fitView } = useReactFlow();
 
   // Open modal by default when canvas is first opened
-  const [isModalOpen, setIsModalOpen] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const handleLayout = useCallback(() => {
     applyLayout("LR");
@@ -62,72 +62,22 @@ function FlowCanvasContent() {
     }
   }, [resetCanvas, fitView]);
 
+  const handleExportPrd = useCallback(() => {
+    setPrdDrawerOpen(true);
+    generatePrd();
+  }, [setPrdDrawerOpen, generatePrd]);
+
   return (
     <div className="w-full h-full relative">
       {/* Top Floating Control Bar */}
-      <div className="absolute top-4 left-4 right-4 z-10 flex items-center justify-between pointer-events-none">
-        {/* Brand Header */}
-        <div className="pointer-events-auto flex items-center gap-2.5 px-3.5 py-2 bg-white/90 backdrop-blur-md rounded-xl shadow-xs border border-slate-200">
-          <div className="w-6 h-6 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-xs">
-            P
-          </div>
-          <div className="flex flex-col">
-            <span className="text-xs font-bold text-slate-800 leading-tight">
-              ngePRD
-            </span>
-            <span className="text-[10px] text-slate-500 font-medium">
-              Visual Discovery Canvas
-            </span>
-          </div>
-        </div>
+      <TopBar
+        onOpenIdeaModal={() => setIsModalOpen(true)}
+        onExportPrd={handleExportPrd}
+        onLayout={handleLayout}
+        onReset={handleReset}
+      />
 
-        {/* Action Controls & Progress Indicator */}
-        <div className="pointer-events-auto flex items-center gap-2">
-          {totalCount > 0 && (
-            <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-white/90 backdrop-blur-md rounded-lg shadow-xs border border-slate-200 text-xs">
-              <div className="flex items-center gap-1.5 font-medium text-slate-700">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span>{answeredCount} Terjawab</span>
-              </div>
-              <span className="text-slate-300">/</span>
-              <div className="flex items-center gap-1.5 font-medium text-slate-500">
-                <span className="w-2 h-2 rounded-full bg-amber-400 shrink-0" />
-                <span>{pendingCount} Pending</span>
-              </div>
-            </div>
-          )}
-
-          <button
-            type="button"
-            onClick={handleLayout}
-            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 hover:bg-white text-slate-700 text-xs font-medium rounded-lg border border-slate-200 shadow-xs hover:border-slate-300 transition-all cursor-pointer"
-            title="Tata letak otomatis dengan Dagre"
-          >
-            <LayoutGrid className="w-3.5 h-3.5 text-indigo-600" />
-            <span>Auto Layout</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleReset}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 bg-white/90 hover:bg-white text-slate-600 hover:text-rose-600 text-xs font-medium rounded-lg border border-slate-200 shadow-xs hover:border-slate-300 transition-all cursor-pointer"
-            title="Reset Kanvas"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setIsModalOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-lg shadow-sm transition-all cursor-pointer"
-            title="Buka dialog input ide baru"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-            <span>+ Ide Baru</span>
-          </button>
-        </div>
-      </div>
-
+      {/* Main Graph Viewport */}
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -168,6 +118,9 @@ function FlowCanvasContent() {
         onClose={() => setIsModalOpen(false)}
         onSuccess={handleModalSuccess}
       />
+
+      {/* PRD Preview & Export Drawer */}
+      <PrdDrawer />
     </div>
   );
 }

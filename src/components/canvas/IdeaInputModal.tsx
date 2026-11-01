@@ -152,6 +152,7 @@ export default function IdeaInputModal({
           });
 
         // 6. Update canvas store
+        useCanvasStore.getState().setCurrentIdea(trimmedIdea);
         useCanvasStore.getState().setNodes(layoutedNodes);
         useCanvasStore.getState().setEdges(layoutedEdges);
 

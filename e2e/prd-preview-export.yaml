@@ -1,0 +1,23 @@
+name: PRD Preview Drawer and Export Features
+url: http://localhost:3000
+---
+- assertVisible:
+    text: "ngePRD"
+- assertVisible:
+    text: "Export PRD"
+- tapOn:
+    text: "Export PRD"
+- assertVisible:
+    text: "PRD Preview"
+- assertVisible:
+    text: "1. Ringkasan"
+- assertVisible:
+    text: "Copy Markdown"
+- assertVisible:
+    text: "Download .md"
+- tapOn:
+    text: "Copy Markdown"
+- assertVisible:
+    text: "Disalin ke clipboard!"
+- tapOn:
+    text: "Download .md"

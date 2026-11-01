@@ -134,6 +134,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
   pendingCount: initialCounts.pending,
   totalCount: initialCounts.total,
 
+  // PRD State
+  currentIdea: undefined,
+  prdMarkdown: null,
+  isPrdDrawerOpen: false,
+  isGeneratingPrd: false,
+  prdError: null,
+
   onNodesChange: (changes) => {
     set((state) => {
       const nextNodes = applyNodeChanges(changes, state.nodes);
@@ -371,6 +378,106 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       answeredCount: counts.answered,
       pendingCount: counts.pending,
       totalCount: counts.total,
+      currentIdea: undefined,
+      prdMarkdown: null,
+      isPrdDrawerOpen: false,
+      isGeneratingPrd: false,
+      prdError: null,
     });
+  },
+
+  // PRD State Actions
+  setCurrentIdea: (idea: string) => {
+    set({ currentIdea: idea });
+  },
+
+  getActiveIdea: () => {
+    const state = get();
+    if (state.currentIdea && state.currentIdea.trim()) {
+      return state.currentIdea.trim();
+    }
+
+    const ideaNode = state.nodes.find(
+      (n) => n.type === "ideaCard" || n.type === "ideaNode"
+    );
+    if (ideaNode && ideaNode.data) {
+      const dataObj = ideaNode.data as Record<string, unknown>;
+      const ideaText = (dataObj.idea || dataObj.label) as string | undefined;
+      if (ideaText && ideaText.trim()) return ideaText.trim();
+    }
+
+    const startNode = state.nodes.find((n) => n.id === "start-node");
+    if (startNode && startNode.data) {
+      const dataObj = startNode.data as Record<string, unknown>;
+      const text = (dataObj.idea || dataObj.label) as string | undefined;
+      if (text && text.trim()) {
+        const lines = text.split("\n");
+        const matched = lines.find((l) => l.toLowerCase().includes("ide"));
+        if (matched) {
+          const cleaned = matched.replace(/ide\s*(proyek)?\s*:\s*/i, "").trim();
+          if (cleaned) return cleaned;
+        }
+        return text.trim();
+      }
+    }
+
+    return "Aplikasi Web ngePRD";
+  },
+
+  setPrdDrawerOpen: (open: boolean) => {
+    set({ isPrdDrawerOpen: open });
+  },
+
+  setPrdMarkdown: (markdown: string | null) => {
+    set({ prdMarkdown: markdown });
+  },
+
+  generatePrd: async () => {
+    const state = get();
+    const idea = state.getActiveIdea();
+    set({ isGeneratingPrd: true, prdError: null });
+
+    try {
+      const response = await fetch("/api/plan/synthesize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          idea,
+          answersMap: state.answersMap,
+        }),
+      });
+
+      if (!response.ok) {
+        let errorMsg = `Gagal menyusun PRD (Status ${response.status})`;
+        try {
+          const errData = await response.json();
+          if (errData.error) errorMsg = errData.error;
+        } catch {
+          // ignore json parse error
+        }
+        throw new Error(errorMsg);
+      }
+
+      const data = await response.json();
+      const markdown = (data.markdown || data.prd || "") as string;
+      set({
+        prdMarkdown: markdown,
+        isGeneratingPrd: false,
+        prdError: null,
+      });
+      return markdown;
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Terjadi kesalahan saat menyusun PRD.";
+      set({
+        prdError: message,
+        isGeneratingPrd: false,
+      });
+      return null;
+    }
   },
 }));

@@ -54,6 +54,13 @@ export interface CanvasState {
   pendingCount: number;
   totalCount: number;
 
+  // PRD & Export State
+  currentIdea?: string;
+  prdMarkdown: string | null;
+  isPrdDrawerOpen: boolean;
+  isGeneratingPrd: boolean;
+  prdError: string | null;
+
   // React Flow event handlers
   onNodesChange: OnNodesChange<CanvasNode>;
   onEdgesChange: OnEdgesChange;
@@ -76,4 +83,11 @@ export interface CanvasState {
   getAnswerCounts: () => AnswerCounts;
   applyLayout: (direction?: "TB" | "LR") => void;
   resetCanvas: () => void;
+
+  // PRD actions
+  setCurrentIdea: (idea: string) => void;
+  getActiveIdea: () => string;
+  setPrdDrawerOpen: (open: boolean) => void;
+  setPrdMarkdown: (markdown: string | null) => void;
+  generatePrd: () => Promise<string | null>;
 }

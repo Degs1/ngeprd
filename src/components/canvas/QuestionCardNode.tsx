@@ -100,6 +100,8 @@ function QuestionCardNode({ id, data, selected }: NodeProps) {
               key={option.id}
               type="button"
               onClick={() => handleSelectOption(option.id)}
+              aria-label={option.label}
+              title={option.label}
               className={cn(
                 "nodrag nopan w-full text-left p-2.5 rounded-lg border text-xs transition-all flex items-start gap-2.5 cursor-pointer group",
                 isSelected
