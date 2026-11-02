@@ -124,7 +124,7 @@ export async function generateQuestions(idea: string): Promise<QuestionItem[]> {
       system: getQuestionsSystemPrompt(),
       prompt: buildQuestionsPrompt(idea),
       temperature: 0.3,
-      abortSignal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS) || 6000),
+      abortSignal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS) || 45000),
     });
 
     const cleanedJson = extractJsonFromText(text);
@@ -183,7 +183,7 @@ export async function generatePrd(
       system: getPrdSystemPrompt(),
       prompt: buildPrdPrompt(idea, answersInput),
       temperature: 0.4,
-      abortSignal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS) || 6000),
+      abortSignal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS) || 45000),
     });
 
     const cleanedMarkdown = extractMarkdownFromText(text);
