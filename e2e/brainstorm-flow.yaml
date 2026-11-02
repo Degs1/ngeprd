@@ -1,0 +1,13 @@
+name: Brainstorm Wizard Flow
+url: http://localhost:3000
+---
+- assertVisible:
+    text: "ngePRD"
+- assertVisible:
+    text: "Mau bikin apa hari ini?"
+- assertVisible:
+    text: "Atau coba salah satu ide contoh ini:"
+- tapOn:
+    text: "Web marketplace jasa cuci sepatu"
+- assertVisible:
+    text: "Web marketplace jasa cuci sepatu berbasis lokasi dengan payment gateway dan pelacakan status pesanan real-time"

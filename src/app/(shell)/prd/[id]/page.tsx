@@ -19,7 +19,9 @@ import {
   X,
 } from "lucide-react";
 import StatusChip from "@/components/dashboard/StatusChip";
+import BrainstormWizard from "@/components/brainstorm/BrainstormWizard";
 import { usePrdStore, type PrdStatus } from "@/store/usePrdStore";
+import type { BrainstormQuestion, BrainstormAnswer } from "@/lib/schemas/prd";
 import { cn } from "@/lib/utils";
 
 interface PrdDetail {
@@ -29,8 +31,8 @@ interface PrdDetail {
   lang: "id" | "en";
   status: PrdStatus;
   brainstorm?: {
-    questions?: Array<{ id: string; text: string; options: string[] }>;
-    answers?: Array<{ questionId: string; value: string; isCustom: boolean }>;
+    questions?: BrainstormQuestion[];
+    answers?: BrainstormAnswer[];
   };
   keyDecisions?: string[];
   chapters?: Array<{ id: string; title: string; order: number }>;
@@ -225,69 +227,30 @@ export default function PrdWorkspacePage() {
         <div className="max-w-4xl mx-auto">
           {/* Status 1: Brainstorming */}
           {prd.status === "brainstorming" && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center text-amber-700">
-                  <Sparkles className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">
-                    Fase Brainstorming
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    AI merumuskan pertanyaan arsitektur dan klarifikasi kebutuhan
-                  </p>
-                </div>
-              </div>
-
-              {/* Idea card */}
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60 mb-6">
-                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Ide Proyek
-                </div>
-                <p className="text-sm text-slate-800 leading-relaxed">{prd.idea}</p>
-              </div>
-
-              {/* Status details */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-                <div className="p-4 rounded-xl border border-slate-200/70 bg-white flex items-start gap-3">
-                  <HelpCircle className="w-5 h-5 text-indigo-500 shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-xs font-semibold text-slate-500">
-                      Pertanyaan AI
-                    </div>
-                    <div className="text-base font-bold text-slate-800 mt-0.5">
-                      {prd.brainstorm?.questions?.length || 0} Pertanyaan
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      {prd.brainstorm?.answers?.length || 0} telah dijawab
-                    </p>
-                  </div>
-                </div>
-
-                <div className="p-4 rounded-xl border border-slate-200/70 bg-white flex items-start gap-3">
-                  <Clock className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-                  <div>
-                    <div className="text-xs font-semibold text-slate-500">
-                      Status Alur
-                    </div>
-                    <div className="text-base font-bold text-slate-800 mt-0.5">
-                      Menunggu Brainstorm
-                    </div>
-                    <p className="text-xs text-slate-400 mt-1">
-                      Siap masuk ke wizard pertanyaan
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-indigo-50/70 border border-indigo-100 text-indigo-900 text-xs flex items-center gap-3">
-                <Sparkles className="w-4 h-4 text-indigo-600 shrink-0" />
-                <span>
-                  Workspace siap untuk wizard brainstorming (FR-BRN). Jawaban Anda akan membantu AI menghasilkan PRD yang akurat.
-                </span>
-              </div>
-            </div>
+            <BrainstormWizard
+              prdId={prd._id}
+              idea={prd.idea}
+              initialQuestions={prd.brainstorm?.questions || []}
+              initialAnswers={prd.brainstorm?.answers || []}
+              onAnswersUpdated={(updatedAnswers) => {
+                setPrd((prev) =>
+                  prev
+                    ? {
+                        ...prev,
+                        brainstorm: {
+                          ...prev.brainstorm,
+                          answers: updatedAnswers,
+                        },
+                      }
+                    : prev
+                );
+              }}
+              onGeneratePrd={() => {
+                setPrd((prev) =>
+                  prev ? { ...prev, status: "generating" } : prev
+                );
+              }}
+            />
           )}
 
           {/* Status 2: Generating */}

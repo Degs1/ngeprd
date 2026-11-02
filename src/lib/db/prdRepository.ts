@@ -6,6 +6,8 @@ import type {
   Section,
   SectionType,
   CreatePrdInput,
+  BrainstormQuestion,
+  BrainstormAnswer,
 } from "../schemas/prd";
 import { generateSectionId } from "../schemas/prd";
 import type { PrdChangeSet, ChangeItem } from "../schemas/agent";
@@ -619,4 +621,83 @@ export async function revertChangeSetAtomic(
     revertedSectionIds: itemsToRevert.map((it) => it.sectionId),
     skipped,
   };
+}
+
+/**
+ * Saves brainstorm questions and detected language to the PRD document.
+ */
+export async function saveBrainstormQuestions(
+  id: string | ObjectId,
+  ownerId: string,
+  questions: BrainstormQuestion[],
+  lang: "id" | "en"
+): Promise<PrdDocument | null> {
+  const oid = toObjectId(id);
+  if (!oid) return null;
+
+  const col = await getPrdCollection();
+  const now = new Date();
+
+  const result = await col.findOneAndUpdate(
+    { _id: oid, ownerId },
+    {
+      $set: {
+        "brainstorm.questions": questions,
+        lang,
+        updatedAt: now,
+      },
+    },
+    { returnDocument: "after" }
+  );
+
+  return result || null;
+}
+
+/**
+ * Upserts a brainstorm answer in prd.brainstorm.answers.
+ * If an answer for the given questionId already exists, it is updated;
+ * otherwise it is pushed to the answers array.
+ */
+export async function upsertBrainstormAnswer(
+  id: string | ObjectId,
+  ownerId: string,
+  answer: BrainstormAnswer
+): Promise<PrdDocument | null> {
+  const oid = toObjectId(id);
+  if (!oid) return null;
+
+  const col = await getPrdCollection();
+  const now = new Date();
+
+  // Try updating existing answer for questionId
+  const updateExisting = await col.findOneAndUpdate(
+    {
+      _id: oid,
+      ownerId,
+      "brainstorm.answers.questionId": answer.questionId,
+    },
+    {
+      $set: {
+        "brainstorm.answers.$": answer,
+        updatedAt: now,
+      },
+    },
+    { returnDocument: "after" }
+  );
+
+  if (updateExisting) {
+    return updateExisting;
+  }
+
+  // If not found, push new answer
+  const pushNew = await col.findOneAndUpdate(
+    { _id: oid, ownerId },
+    {
+      $push: { "brainstorm.answers": answer },
+      $set: { updatedAt: now },
+    },
+    { returnDocument: "after" }
+  );
+
+  return pushNew || null;
 }

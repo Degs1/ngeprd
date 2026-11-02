@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "test": "tsx tests/prd-data-layer.test.ts",
+    "test": "tsx --test tests/*.test.ts",
     "db:indexes": "tsx scripts/ensure-indexes.ts"
   },
   "dependencies": {
