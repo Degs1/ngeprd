@@ -50,6 +50,7 @@ export interface GenerateJsonOptions<T extends z.ZodTypeAny> {
   sectionId?: string;
   client?: ReturnType<typeof getAiClient>;
   model?: string;
+  signal?: AbortSignal;
 }
 
 /**
@@ -174,6 +175,13 @@ export async function generateJson<T extends z.ZodTypeAny>(
   ];
 
   while (attempt < MAX_TOTAL_ATTEMPTS) {
+    if (options.signal?.aborted) {
+      throw new AiError("AI_TIMEOUT", "Operasi AI dibatalkan oleh pengguna", {
+        stage: options.stage,
+        docId: options.docId,
+        sectionId: options.sectionId,
+      });
+    }
     attempt++;
     const startTime = Date.now();
 
@@ -183,7 +191,9 @@ export async function generateJson<T extends z.ZodTypeAny>(
         system: options.system,
         messages,
         temperature: 0.3,
-        abortSignal: AbortSignal.timeout(timeoutMs),
+        abortSignal: options.signal
+          ? AbortSignal.any([AbortSignal.timeout(timeoutMs), options.signal])
+          : AbortSignal.timeout(timeoutMs),
       });
 
       const rawText = response.text;
@@ -310,6 +320,13 @@ export async function generateJson<T extends z.ZodTypeAny>(
 
       return validation.data;
     } catch (err: unknown) {
+    if (options.signal?.aborted) {
+      throw new AiError("AI_TIMEOUT", "Operasi AI dibatalkan oleh pengguna", {
+        stage: options.stage,
+        docId: options.docId,
+        sectionId: options.sectionId,
+      });
+    }
       if (err instanceof AiError) {
         throw err;
       }

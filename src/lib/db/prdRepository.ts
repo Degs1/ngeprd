@@ -8,6 +8,10 @@ import type {
   CreatePrdInput,
   BrainstormQuestion,
   BrainstormAnswer,
+  Chapter,
+  Edge,
+  Diagram,
+  PrdStatus,
 } from "../schemas/prd";
 import { generateSectionId } from "../schemas/prd";
 import type { PrdChangeSet, ChangeItem } from "../schemas/agent";
@@ -700,4 +704,376 @@ export async function upsertBrainstormAnswer(
   );
 
   return pushNew || null;
+}
+
+/**
+ * Checks whether an active, non-stale run is currently holding the document execution lock.
+ * Lock is stale if no heartbeat has occurred for more than 3 minutes (180,000 ms).
+ */
+export function isRunActive(doc: PrdDocument): boolean {
+  if (!doc.run) return false;
+  const heartbeatTime = new Date(doc.run.heartbeatAt).getTime();
+  const threeMinutesAgo = Date.now() - 3 * 60 * 1000;
+  return heartbeatTime > threeMinutesAgo;
+}
+
+export interface AcquireLockResult {
+  acquired: boolean;
+  doc: PrdDocument | null;
+  reason?: "NOT_FOUND" | "RUN_IN_PROGRESS";
+}
+
+/**
+ * Atomically acquires the execution lock for a PRD document.
+ * Succeeds if:
+ * 1. Document has no active run (run is null or undefined).
+ * 2. OR current run's heartbeat is older than 3 minutes (stale lock takeover).
+ */
+export async function acquireExecutionLock(
+  id: string | ObjectId,
+  ownerId: string,
+  runId: string
+): Promise<AcquireLockResult> {
+  const oid = toObjectId(id);
+  if (!oid) return { acquired: false, doc: null, reason: "NOT_FOUND" };
+
+  const col = await getPrdCollection();
+  const now = new Date();
+  const staleThreshold = new Date(Date.now() - 3 * 60 * 1000);
+
+  const filter = {
+    _id: oid,
+    ownerId,
+    $or: [
+      { run: null },
+      { run: { $exists: false } },
+      { "run.heartbeatAt": { $lt: staleThreshold } },
+    ],
+  };
+
+  const update = {
+    $set: {
+      status: "generating" as PrdStatus,
+      run: {
+        id: runId,
+        startedAt: now,
+        heartbeatAt: now,
+      },
+      updatedAt: now,
+    },
+  };
+
+  const result = await col.findOneAndUpdate(filter, update, {
+    returnDocument: "after",
+  });
+
+  if (result) {
+    return { acquired: true, doc: result };
+  }
+
+  // Determine whether document does not exist or lock is currently active
+  const existing = await col.findOne({ _id: oid, ownerId });
+  if (!existing) {
+    return { acquired: false, doc: null, reason: "NOT_FOUND" };
+  }
+
+  return { acquired: false, doc: existing, reason: "RUN_IN_PROGRESS" };
+}
+
+/**
+ * Updates the heartbeat timestamp for an active run.
+ */
+export async function updateExecutionHeartbeat(
+  id: string | ObjectId,
+  runId: string
+): Promise<boolean> {
+  const oid = toObjectId(id);
+  if (!oid) return false;
+
+  const col = await getPrdCollection();
+  const now = new Date();
+
+  const result = await col.updateOne(
+    { _id: oid, "run.id": runId },
+    {
+      $set: {
+        "run.heartbeatAt": now,
+        updatedAt: now,
+      },
+    }
+  );
+
+  return result.matchedCount > 0;
+}
+
+/**
+ * Releases the execution lock on a PRD document upon completion, failure, or cancellation.
+ */
+export async function releaseExecutionLock(
+  id: string | ObjectId,
+  runId: string,
+  finalStatus: PrdStatus,
+  lastError?: { code: string; message: string; stage: string; at: Date } | null
+): Promise<boolean> {
+  const oid = toObjectId(id);
+  if (!oid) return false;
+
+  const col = await getPrdCollection();
+  const now = new Date();
+
+  const setOps: Record<string, unknown> = {
+    run: null,
+    status: finalStatus,
+    updatedAt: now,
+  };
+
+  if (lastError !== undefined) {
+    setOps.lastError = lastError;
+  }
+
+  const result = await col.updateOne(
+    { _id: oid, "run.id": runId },
+    { $set: setOps }
+  );
+
+  return result.matchedCount > 0;
+}
+
+/**
+ * Resets sections in 'writing' status back to 'pending' and clears the run lock.
+ * Called when a run is cancelled or aborted.
+ */
+export async function resetWritingSectionsToPending(
+  id: string | ObjectId,
+  ownerId: string
+): Promise<boolean> {
+  const oid = toObjectId(id);
+  if (!oid) return false;
+
+  const col = await getPrdCollection();
+  const doc = await col.findOne({ _id: oid, ownerId });
+  if (!doc) return false;
+
+  const readyCount = doc.sections ? doc.sections.filter((s) => s.status === "ready").length : 0;
+  const targetStatus: PrdStatus = readyCount >= 1 ? "ready" : "brainstorming";
+  const now = new Date();
+  const hasWriting = doc.sections ? doc.sections.some((s) => s.status === "writing") : false;
+
+  if (hasWriting) {
+    const result = await col.updateOne(
+      { _id: oid, ownerId },
+      {
+        $set: {
+          run: null,
+          status: targetStatus,
+          "sections.$[s].status": "pending",
+          updatedAt: now,
+        },
+      },
+      {
+        arrayFilters: [{ "s.status": "writing" }],
+      }
+    );
+    return result.matchedCount > 0;
+  } else {
+    const result = await col.updateOne(
+      { _id: oid, ownerId },
+      {
+        $set: {
+          run: null,
+          status: targetStatus,
+          updatedAt: now,
+        },
+      }
+    );
+    return result.matchedCount > 0;
+  }
+}
+
+/**
+ * Saves the dynamically generated chapters, sections (pending), edges, and key decisions.
+ * Only updates title if the user has not edited it (!titleEdited).
+ */
+export async function savePlanToPrdDocument(
+  id: string | ObjectId,
+  ownerId: string,
+  plan: {
+    title?: string;
+    keyDecisions: string[];
+    chapters: Chapter[];
+    sections: Section[];
+    edges: Edge[];
+  }
+): Promise<PrdDocument | null> {
+  const oid = toObjectId(id);
+  if (!oid) return null;
+
+  const col = await getPrdCollection();
+  const current = await col.findOne({ _id: oid, ownerId });
+  if (!current) return null;
+
+  const now = new Date();
+  const setOps: Record<string, unknown> = {
+    chapters: plan.chapters,
+    sections: plan.sections,
+    edges: plan.edges,
+    keyDecisions: plan.keyDecisions,
+    updatedAt: now,
+  };
+
+  if (!current.titleEdited && plan.title) {
+    setOps.title = plan.title;
+  }
+
+  const result = await col.findOneAndUpdate(
+    { _id: oid, ownerId },
+    { $set: setOps },
+    { returnDocument: "after" }
+  );
+
+  return result || null;
+}
+
+/**
+ * Marks a specific section as 'writing' prior to invoking SectionWriter.
+ */
+export async function markSectionWriting(
+  id: string | ObjectId,
+  ownerId: string,
+  sectionId: string
+): Promise<boolean> {
+  const oid = toObjectId(id);
+  if (!oid) return false;
+
+  const col = await getPrdCollection();
+  const now = new Date();
+
+  const result = await col.updateOne(
+    {
+      _id: oid,
+      ownerId,
+      sections: {
+        $elemMatch: {
+          id: sectionId,
+          status: { $in: ["pending", "writing", "failed"] },
+        },
+      },
+    },
+    {
+      $set: {
+        "sections.$[s].status": "writing",
+        "sections.$[s].updatedAt": now,
+        updatedAt: now,
+      },
+    },
+    {
+      arrayFilters: [{ "s.id": sectionId }],
+    }
+  );
+
+  return result.matchedCount > 0;
+}
+
+/**
+ * Atomically saves a completed section's content and optional diagram to MongoDB,
+ * advancing its rev and status to 'ready'.
+ * Filters on status in [pending, writing, failed] to prevent overwriting user edits.
+ */
+export async function saveSectionCompleted(
+  id: string | ObjectId,
+  ownerId: string,
+  sectionId: string,
+  content: string,
+  diagram?: Diagram
+): Promise<{ success: boolean; rev: number }> {
+  const oid = toObjectId(id);
+  if (!oid) return { success: false, rev: 0 };
+
+  const col = await getPrdCollection();
+  const now = new Date();
+
+  const setOps: Record<string, unknown> = {
+    "sections.$[s].content": content,
+    "sections.$[s].status": "ready",
+    "sections.$[s].updatedAt": now,
+    updatedAt: now,
+  };
+
+  if (diagram !== undefined) {
+    setOps["sections.$[s].diagram"] = diagram;
+  }
+
+  const updatedDoc = await col.findOneAndUpdate(
+    {
+      _id: oid,
+      ownerId,
+      sections: {
+        $elemMatch: {
+          id: sectionId,
+          status: { $in: ["pending", "writing", "failed"] },
+        },
+      },
+    },
+    {
+      $set: setOps,
+      $inc: { "sections.$[s].rev": 1 },
+      $unset: { "sections.$[s].error": "" },
+    },
+    {
+      arrayFilters: [{ "s.id": sectionId }],
+      returnDocument: "after",
+    }
+  );
+
+  if (!updatedDoc) {
+    // Check if section was already ready/rev advanced
+    const doc = await col.findOne({ _id: oid, ownerId });
+    const sec = doc?.sections.find((s) => s.id === sectionId);
+    return { success: false, rev: sec?.rev || 0 };
+  }
+
+  const sec = updatedDoc.sections.find((s) => s.id === sectionId);
+  return { success: true, rev: sec?.rev || 1 };
+}
+
+/**
+ * Saves a failed section status and error details to MongoDB.
+ */
+export async function saveSectionFailed(
+  id: string | ObjectId,
+  ownerId: string,
+  sectionId: string,
+  error: { code: string; message: string }
+): Promise<boolean> {
+  const oid = toObjectId(id);
+  if (!oid) return false;
+
+  const col = await getPrdCollection();
+  const now = new Date();
+
+  const result = await col.updateOne(
+    {
+      _id: oid,
+      ownerId,
+      sections: {
+        $elemMatch: {
+          id: sectionId,
+          status: { $in: ["pending", "writing", "failed"] },
+        },
+      },
+    },
+    {
+      $set: {
+        "sections.$[s].status": "failed",
+        "sections.$[s].error": error,
+        "sections.$[s].updatedAt": now,
+        updatedAt: now,
+      },
+    },
+    {
+      arrayFilters: [{ "s.id": sectionId }],
+    }
+  );
+
+  return result.matchedCount > 0;
 }
