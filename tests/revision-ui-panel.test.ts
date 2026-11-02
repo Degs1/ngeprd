@@ -100,6 +100,16 @@ test("WorkspaceStore - changeset selection state prevents deselecting origin sec
         after: { title: "Arsitektur", content: "Python" },
         status: "ready",
       },
+      {
+        sectionId: "sec_failed_1",
+        role: "impacted",
+        reason: "Gagal memproses",
+        detectedBy: "ai",
+        baseRev: 1,
+        before: { title: "Database", content: "MongoDB" },
+        after: null,
+        status: "failed",
+      },
     ],
   };
 
@@ -108,6 +118,10 @@ test("WorkspaceStore - changeset selection state prevents deselecting origin sec
     activeChangeSet: dummyChangeSet,
     selectedChangeItemIds: ["sec_origin", "sec_impacted_1"],
   });
+
+  // Attempt to select failed item: should be a no-op per PRD Section 7.6
+  useWorkspaceStore.getState().toggleChangeItemSelection("sec_failed_1");
+  assert.ok(!useWorkspaceStore.getState().selectedChangeItemIds.includes("sec_failed_1"));
 
   // Attempt to deselect origin: should be a no-op per FR-AI-05
   useWorkspaceStore.getState().toggleChangeItemSelection("sec_origin");
@@ -120,10 +134,11 @@ test("WorkspaceStore - changeset selection state prevents deselecting origin sec
   assert.ok(!selected.includes("sec_impacted_1"), "Impacted section should be toggled off");
   assert.ok(selected.includes("sec_origin"), "Origin section MUST still be selected");
 
-  // Select all: both are selected
+  // Select all: only non-failed items are selected
   useWorkspaceStore.getState().selectAllChangeItems();
   selected = useWorkspaceStore.getState().selectedChangeItemIds;
   assert.equal(selected.length, 2);
+  assert.ok(!selected.includes("sec_failed_1"), "Failed item must NOT be selected");
 
   // Deselect impacted items: only origin remains
   useWorkspaceStore.getState().deselectImpactedChangeItems();
@@ -136,12 +151,14 @@ test("WorkspaceStore - handles redirect suggestion state (FR-AI-12)", () => {
     changeSetRedirect: {
       sectionId: "sec_features",
       reason: "Instruksi ini membahas fitur chat, lebih cocok di 2.1 Fitur",
+      instruction: "Tambahkan fitur real-time chat via WebSocket",
     },
   });
 
   const state = useWorkspaceStore.getState();
   assert.equal(state.changeSetRedirect?.sectionId, "sec_features");
   assert.ok(state.changeSetRedirect?.reason.includes("fitur chat"));
+  assert.equal(state.changeSetRedirect?.instruction, "Tambahkan fitur real-time chat via WebSocket");
 
   // Clear redirect
   useWorkspaceStore.getState().clearChangeSetRedirect();

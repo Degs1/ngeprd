@@ -755,7 +755,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
               ) : (
                 <button
                   type="button"
-                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                  onClick={(e: any) => {
                     e.stopPropagation();
                     selectNode(id);
                   }}

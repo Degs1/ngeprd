@@ -108,7 +108,7 @@ export interface WorkspaceState {
   changeSetHistory: ClientChangeSet[];
   changeSetProgress: ChangeSetProgress;
   selectedChangeItemIds: string[];
-  changeSetRedirect: { sectionId: string; reason: string } | null;
+  changeSetRedirect: { sectionId: string; reason: string; instruction?: string } | null;
   isCreatingChangeSet: boolean;
   isApplyingChangeSet: boolean;
   isRevertingChangeSet: boolean;
@@ -120,7 +120,7 @@ export interface WorkspaceState {
   isSavingLayout: boolean;
 
   // Actions
-  loadPrd: (id: string) => Promise<boolean>;
+  loadPrd: (id: string, reloadChangeset?: boolean) => Promise<boolean>;
   setDocument: (doc: PrdDocument) => void;
   onNodesChange: (changes: NodeChanges) => void;
   onEdgesChange: (changes: EdgeChanges) => void;
@@ -215,7 +215,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
   isSavingLayout: false,
 
-  loadPrd: async (id: string) => {
+  loadPrd: async (id: string, reloadChangeset: boolean = true) => {
     set({ isLoading: true, error: null, prdId: id });
     try {
       const res = await fetch(`/api/prds/${id}`, { cache: "no-store" });
@@ -237,7 +237,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       });
 
       // Load active or recent changesets for this PRD (TASK-016)
-      get().loadActiveChangeSet(id).catch(() => {});
+      if (reloadChangeset) {
+        await get().loadActiveChangeSet(id).catch(() => {});
+      }
 
       return true;
     } catch (err: unknown) {
@@ -1048,6 +1050,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
                 ...state.activeChangeSet,
                 items: updatedItems,
               },
+              selectedChangeItemIds: state.selectedChangeItemIds.filter(
+                (id) => id !== data.sectionId
+              ),
               changeSetProgress: {
                 ...state.changeSetProgress,
                 current: processedCount,
@@ -1062,6 +1067,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
             changeSetRedirect: {
               sectionId: data.sectionId,
               reason: data.reason,
+              instruction: instruction,
             },
             changeSetProgress: {
               step: "idle",
@@ -1163,7 +1169,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       }
 
       // Success! Refresh PRD to update node contents and key decisions on canvas and outline
-      await get().loadPrd(prdId);
+      await get().loadPrd(prdId, false);
 
       // Update active changeset state to 'applied'
       set((state) => ({
@@ -1242,7 +1248,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
       }
 
       // Refresh PRD to revert canvas and outline contents back
-      await get().loadPrd(prdId);
+      await get().loadPrd(prdId, false);
 
       set((state) => ({
         activeChangeSet: state.activeChangeSet
@@ -1272,6 +1278,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         return {};
       }
 
+      // Failed items cannot be selected
+      const targetItem = state.activeChangeSet?.items.find((i) => i.sectionId === sectionId);
+      if (targetItem?.status === "failed") {
+        return {};
+      }
+
       const currentSelected = state.selectedChangeItemIds;
       const isAlreadySelected = currentSelected.includes(sectionId);
       const updatedSelected = isAlreadySelected
@@ -1285,8 +1297,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   selectAllChangeItems: () => {
     set((state) => {
       if (!state.activeChangeSet) return {};
-      const allIds = state.activeChangeSet.items.map((i) => i.sectionId);
-      return { selectedChangeItemIds: allIds };
+      const selectableIds = state.activeChangeSet.items
+        .filter((i) => i.status !== "failed")
+        .map((i) => i.sectionId);
+      return { selectedChangeItemIds: selectableIds };
     });
   },
 

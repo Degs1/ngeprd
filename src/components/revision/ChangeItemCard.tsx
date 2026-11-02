@@ -63,19 +63,29 @@ export function ChangeItemCard({
     >
       {/* Header bar */}
       <div className="p-3 bg-white flex items-start gap-2.5">
-        {/* Checkbox (Origin is locked/disabled per FR-AI-05) */}
+        {/* Checkbox (Origin is locked/disabled per FR-AI-05, failed items are disabled per Section 7.6) */}
         <div className="pt-0.5 shrink-0">
           <input
             type="checkbox"
             id={`checkbox-${item.sectionId}`}
-            checked={isOrigin ? true : isSelected}
-            disabled={disabled || isOrigin}
+            checked={isFailed ? false : (isOrigin ? true : isSelected)}
+            disabled={disabled || isOrigin || isFailed}
             onChange={() => onToggleSelect(item.sectionId)}
             className={cn(
               "w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-colors",
-              isOrigin ? "cursor-not-allowed opacity-90 accent-purple-600" : "cursor-pointer"
+              isOrigin
+                ? "cursor-not-allowed opacity-90 accent-purple-600"
+                : isFailed
+                ? "cursor-not-allowed opacity-40 bg-slate-200"
+                : "cursor-pointer"
             )}
-            title={isOrigin ? "Origin section wajib disertakan" : "Pilih untuk menerapkan"}
+            title={
+              isFailed
+                ? "Bagian ini gagal disusun dan tidak dapat dicentang"
+                : isOrigin
+                ? "Origin section wajib disertakan"
+                : "Pilih untuk menerapkan"
+            }
           />
         </div>
 

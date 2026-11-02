@@ -139,22 +139,22 @@ export function DiffView({
             {wordDiff.map((part, index) => {
               if (part.added) {
                 return (
-                  <span
+                  <ins
                     key={index}
-                    className="bg-emerald-100/90 text-emerald-950 font-medium px-0.5 py-0.2 rounded border border-emerald-200"
+                    className="bg-emerald-100/90 text-emerald-950 font-medium px-0.5 py-0.2 rounded border border-emerald-200 no-underline"
                   >
                     {part.value}
-                  </span>
+                  </ins>
                 );
               }
               if (part.removed) {
                 return (
-                  <span
+                  <del
                     key={index}
                     className="bg-rose-100/90 text-rose-950 line-through decoration-rose-500/70 px-0.5 py-0.2 rounded border border-rose-200"
                   >
                     {part.value}
-                  </span>
+                  </del>
                 );
               }
               return <span key={index}>{part.value}</span>;

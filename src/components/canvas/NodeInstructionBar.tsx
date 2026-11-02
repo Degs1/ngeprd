@@ -1,6 +1,11 @@
 "use client";
 
-import React, { useState, useRef, useEffect, useCallback } from "react";
+import React, {
+  useState,
+  useRef,
+  useEffect,
+  useCallback,
+} from "react";
 import { Sparkles, ArrowRight, CornerDownLeft, Loader2, RotateCcw } from "lucide-react";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import type { SectionType } from "@/lib/schemas/prd";
@@ -44,11 +49,25 @@ export function NodeInstructionBar({
   const isCreatingChangeSet = useWorkspaceStore((state) => state.isCreatingChangeSet);
   const createChangeSet = useWorkspaceStore((state) => state.createChangeSet);
   const setActiveTab = useWorkspaceStore((state) => state.setActiveTab);
+  const changeSetRedirect = useWorkspaceStore((state) => state.changeSetRedirect);
+  const clearChangeSetRedirect = useWorkspaceStore((state) => state.clearChangeSetRedirect);
 
   // Focus input when mounted
   useEffect(() => {
     inputRef.current?.focus();
   }, [sectionId]);
+
+  // If redirected to this section with a prior instruction, pre-fill it (FR-AI-12)
+  useEffect(() => {
+    if (
+      changeSetRedirect &&
+      changeSetRedirect.sectionId === sectionId &&
+      changeSetRedirect.instruction
+    ) {
+      setInstruction(changeSetRedirect.instruction);
+      clearChangeSetRedirect();
+    }
+  }, [changeSetRedirect, sectionId, clearChangeSetRedirect]);
 
   // Compute chips for this section
   const chips = [
@@ -87,7 +106,7 @@ export function NodeInstructionBar({
 
   return (
     <div
-      onClick={(e: React.MouseEvent<HTMLDivElement>) => e.stopPropagation()}
+      onClick={(e: any) => e.stopPropagation()}
       className={cn(
         "nodrag nowheel w-[380px] max-w-[95vw] bg-white/95 backdrop-blur-md border border-indigo-200/90 rounded-2xl p-2.5 shadow-xl transition-all duration-200 z-50 select-none",
         className
@@ -95,7 +114,7 @@ export function NodeInstructionBar({
     >
       {/* Input row */}
       <form
-        onSubmit={(e: React.FormEvent<HTMLFormElement>) => {
+        onSubmit={(e: any) => {
           e.preventDefault();
           handleSubmit();
         }}
@@ -106,8 +125,10 @@ export function NodeInstructionBar({
           ref={inputRef}
           type="text"
           value={instruction}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setInstruction(e.target.value)}
+          onChange={(e: any) => setInstruction(e.target.value)}
+          onKeyDown={(e: any) => e.stopPropagation()}
           disabled={isCreatingChangeSet}
+          aria-label="Instruksi revisi AI"
           placeholder="Ubah bagian ini... (Enter untuk kirim)"
           className="flex-1 bg-transparent text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none min-w-0"
         />
@@ -115,6 +136,7 @@ export function NodeInstructionBar({
         <button
           type="submit"
           disabled={!instruction.trim() || isCreatingChangeSet}
+          aria-label="Kirim instruksi ke AI"
           className="p-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
           title="Kirim instruksi ke AI"
         >

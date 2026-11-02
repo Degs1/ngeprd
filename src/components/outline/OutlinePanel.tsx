@@ -138,7 +138,7 @@ export default function OutlinePanel({
 
   // Keyboard navigation handler (FR-OUT-07)
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent<HTMLButtonElement>, currentId: string) => {
+    (e: any, currentId: string) => {
       const currentIndex = allSectionIds.indexOf(currentId);
       if (currentIndex === -1) return;
 
@@ -345,7 +345,7 @@ export default function OutlinePanel({
       )}
 
       {/* Tab: Revisions (PRD 8.2 & TASK-016) */}
-      {activeTab === "revisions" && <RevisionPanel />}
+      {activeTab === "revisions" && <RevisionPanel onSelectSection={handleSectionClick} />}
     </aside>
   );
 }

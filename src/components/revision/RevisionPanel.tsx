@@ -24,9 +24,10 @@ import { cn } from "@/lib/utils";
 
 export interface RevisionPanelProps {
   className?: string;
+  onSelectSection?: (sectionId: string) => void;
 }
 
-export function RevisionPanel({ className }: RevisionPanelProps) {
+export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps) {
   const activeChangeSet = useWorkspaceStore((state) => state.activeChangeSet);
   const changeSetHistory = useWorkspaceStore((state) => state.changeSetHistory);
   const changeSetProgress = useWorkspaceStore((state) => state.changeSetProgress);
@@ -100,8 +101,11 @@ export function RevisionPanel({ className }: RevisionPanelProps) {
   const handleApplyRedirect = () => {
     if (!changeSetRedirect) return;
     const targetSectionId = changeSetRedirect.sectionId;
-    clearChangeSetRedirect();
-    selectNode(targetSectionId);
+    if (onSelectSection) {
+      onSelectSection(targetSectionId);
+    } else {
+      selectNode(targetSectionId);
+    }
   };
 
   const isGenerating =
@@ -263,7 +267,23 @@ export function RevisionPanel({ className }: RevisionPanelProps) {
             </div>
 
             {/* Progress Bar */}
-            <div className="w-full bg-indigo-50 h-2 rounded-full overflow-hidden border border-indigo-100">
+            <div
+              role="progressbar"
+              aria-valuenow={
+                changeSetProgress.total > 0
+                  ? Math.min(
+                      100,
+                      Math.round(
+                        (changeSetProgress.current / changeSetProgress.total) * 100
+                      )
+                    )
+                  : 25
+              }
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label="Progres revisi AI"
+              className="w-full bg-indigo-50 h-2 rounded-full overflow-hidden border border-indigo-100"
+            >
               <div
                 className="bg-indigo-600 h-full transition-all duration-300 rounded-full"
                 style={{
