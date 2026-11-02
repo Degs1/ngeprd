@@ -164,6 +164,21 @@ export async function updateChangeSet(
 }
 
 /**
+ * Deletes a single changeset by ID, scoped by ownerId.
+ */
+export async function deleteChangeSet(
+  id: string | ObjectId,
+  ownerId: string
+): Promise<boolean> {
+  const oid = toObjectId(id);
+  if (!oid) return false;
+
+  const col = await getChangeSetCollection();
+  const result = await col.deleteOne({ _id: oid, ownerId });
+  return result.deletedCount > 0;
+}
+
+/**
  * Deletes all changesets belonging to a document.
  */
 export async function deleteChangeSetsByDocId(
