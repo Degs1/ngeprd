@@ -22,6 +22,7 @@ import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import type { Section, SectionType, SectionStatus, Diagram } from "@/lib/schemas/prd";
 import { cn } from "@/lib/utils";
 import { MermaidView } from "./MermaidView";
+import { NodeInstructionBar } from "./NodeInstructionBar";
 
 export interface SectionNodeData {
   id: string;
@@ -79,6 +80,19 @@ function SectionNode({ id, data, selected }: NodeProps) {
     (state) => state.updateSectionInStore
   );
   const loadPrd = useWorkspaceStore((state) => state.loadPrd);
+  const activeChangeSet = useWorkspaceStore((state) => state.activeChangeSet);
+
+  const isRevisionActive =
+    activeChangeSet &&
+    (activeChangeSet.status === "pending" || activeChangeSet.status === "generating");
+  const isRevisionOrigin =
+    Boolean(isRevisionActive && activeChangeSet.originSectionId === id);
+  const isRevisionImpacted =
+    Boolean(
+      isRevisionActive &&
+        !isRevisionOrigin &&
+        activeChangeSet.items.some((it) => it.sectionId === id)
+    );
 
   const section: Partial<Section> = storeSection || nodeData;
   const status: SectionStatus = section.status || "pending";
@@ -330,7 +344,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
     }
   };
 
-  const handleRetry = (e: React.MouseEvent) => {
+  const handleRetry = (e: any) => {
     e.stopPropagation();
     startGeneration([id]);
   };
@@ -341,17 +355,22 @@ function SectionNode({ id, data, selected }: NodeProps) {
     <div
       onClick={() => selectNode(id)}
       className={cn(
-        "relative rounded-2xl border bg-white shadow-sm w-[380px] select-none transition-all duration-200 overflow-hidden flex flex-col",
+        "relative rounded-2xl border bg-white shadow-sm w-[380px] select-none transition-all duration-200 flex flex-col",
         selected
           ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-50 border-indigo-500 shadow-xl"
           : "hover:shadow-md border-slate-200/90",
+        isRevisionOrigin &&
+          "!border-purple-500 !ring-2 !ring-purple-400 !ring-offset-2 shadow-purple-100 shadow-xl",
+        isRevisionImpacted &&
+          "!border-amber-500 !ring-2 !ring-amber-400 !ring-offset-2 shadow-amber-100 shadow-xl",
         status === "writing" &&
           "border-indigo-400 shadow-indigo-100/50 shadow-lg",
         status === "failed" && "border-rose-300 bg-rose-50/20",
         isEditing && "ring-2 ring-indigo-400 border-indigo-400 shadow-md"
       )}
     >
-      {/* Incoming Handle */}
+      <div className="w-full rounded-2xl overflow-hidden flex flex-col flex-1">
+        {/* Incoming Handle */}
       <Handle
         type="target"
         position={Position.Left}
@@ -379,6 +398,19 @@ function SectionNode({ id, data, selected }: NodeProps) {
             >
               {typeMeta.label}
             </span>
+
+            {/* Revision Role Badge (PRD 8.2) */}
+            {isRevisionOrigin && (
+              <span className="text-[10px] font-bold text-purple-700 bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded-full shrink-0 flex items-center gap-1">
+                <Sparkles className="w-2.5 h-2.5" />
+                <span>Origin</span>
+              </span>
+            )}
+            {isRevisionImpacted && (
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full shrink-0">
+                ⟳ Terdampak
+              </span>
+            )}
           </div>
 
           {/* Status / Save Indicator (FR-EDT-02) */}
@@ -723,7 +755,12 @@ function SectionNode({ id, data, selected }: NodeProps) {
               ) : (
                 <button
                   type="button"
+                  onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
+                    e.stopPropagation();
+                    selectNode(id);
+                  }}
                   className="nodrag nowheel px-2.5 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
+                  title="Buka bilah instruksi AI untuk bagian ini"
                 >
                   <Sparkles className="w-3 h-3 text-indigo-600" />
                   <span>Ubah dengan AI</span>
@@ -734,7 +771,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
               <button
                 type="button"
                 disabled={!canEdit}
-                onClick={(e: React.MouseEvent) => {
+                onClick={(e: any) => {
                   e.stopPropagation();
                   if (canEdit) {
                     setIsEditing(true);
@@ -763,6 +800,20 @@ function SectionNode({ id, data, selected }: NodeProps) {
           </>
         )}
       </div>
+
+      </div>
+
+      {/* Floating Node Instruction Bar (FR-AI-01, Section 8.2) */}
+      {selected && status === "ready" && !isEditing && (
+        <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 z-50">
+          <NodeInstructionBar
+            sectionId={id}
+            sectionTitle={title}
+            sectionType={type}
+            hasDiagram={Boolean(diagram?.code)}
+          />
+        </div>
+      )}
 
       {/* Outgoing Handle */}
       <Handle

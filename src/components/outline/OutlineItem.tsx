@@ -9,6 +9,7 @@ import {
   Sparkles,
 } from "lucide-react";
 import type { OutlineSectionItem } from "@/lib/converter/outline";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { cn } from "@/lib/utils";
 
 export interface OutlineItemProps {
@@ -22,6 +23,19 @@ export const OutlineItem = forwardRef<HTMLButtonElement, OutlineItemProps>(
   ({ item, isSelected, onClick, onKeyDown }, ref) => {
     const { section, number } = item;
     const status = section.status;
+
+    const activeChangeSet = useWorkspaceStore((state) => state.activeChangeSet);
+    const isRevisionActive =
+      activeChangeSet &&
+      (activeChangeSet.status === "pending" || activeChangeSet.status === "generating");
+    const isOrigin =
+      Boolean(isRevisionActive && activeChangeSet.originSectionId === section.id);
+    const isImpacted =
+      Boolean(
+        isRevisionActive &&
+          !isOrigin &&
+          activeChangeSet.items.some((i) => i.sectionId === section.id)
+      );
 
     // Type label mapping for readability
     const typeLabelMap: Record<string, string> = {
@@ -89,6 +103,19 @@ export const OutlineItem = forwardRef<HTMLButtonElement, OutlineItemProps>(
 
         {/* Section Title */}
         <span className="truncate flex-1 font-medium">{section.title}</span>
+
+        {/* Revision Indicator Badge (TASK-016, Section 8.2) */}
+        {isOrigin && (
+          <span className="text-[10px] font-bold text-purple-700 bg-purple-100 border border-purple-200 px-1.5 py-0.2 rounded-md shrink-0 flex items-center gap-0.5">
+            <Sparkles className="w-2.5 h-2.5" />
+            <span>Origin</span>
+          </span>
+        )}
+        {isImpacted && (
+          <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.2 rounded-md shrink-0">
+            ⟳ Revisi
+          </span>
+        )}
 
         {/* Type badge */}
         <span

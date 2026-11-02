@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { OutlineItem } from "./OutlineItem";
+import RevisionPanel from "../revision/RevisionPanel";
 import { getOutlineStats } from "@/lib/converter/outline";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +41,13 @@ export default function OutlinePanel({
   const setAllChaptersCollapsed = useWorkspaceStore((state) => state.setAllChaptersCollapsed);
   const activeTab = useWorkspaceStore((state) => state.activeTab);
   const setActiveTab = useWorkspaceStore((state) => state.setActiveTab);
+  const activeChangeSet = useWorkspaceStore((state) => state.activeChangeSet);
+
+  const pendingRevisionCount =
+    activeChangeSet &&
+    (activeChangeSet.status === "pending" || activeChangeSet.status === "generating")
+      ? activeChangeSet.items.length
+      : 0;
 
   // References to items for auto-scrolling
   const itemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
@@ -130,7 +138,7 @@ export default function OutlinePanel({
 
   // Keyboard navigation handler (FR-OUT-07)
   const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent, currentId: string) => {
+    (e: React.KeyboardEvent<HTMLButtonElement>, currentId: string) => {
       const currentIndex = allSectionIds.indexOf(currentId);
       if (currentIndex === -1) return;
 
@@ -206,6 +214,11 @@ export default function OutlinePanel({
           >
             <GitPullRequest className="w-3.5 h-3.5" />
             <span>Revisi</span>
+            {pendingRevisionCount > 0 && (
+              <span className="px-1.5 py-0.2 text-[10px] font-bold rounded-full bg-indigo-600 text-white animate-pulse">
+                {pendingRevisionCount}
+              </span>
+            )}
           </button>
         </div>
 
@@ -331,16 +344,8 @@ export default function OutlinePanel({
         </div>
       )}
 
-      {/* Tab: Revisions (PRD 8.2 placeholder/scaffolding) */}
-      {activeTab === "revisions" && (
-        <div className="flex-1 p-6 flex flex-col items-center justify-center text-center text-slate-500">
-          <GitPullRequest className="w-8 h-8 text-slate-300 mb-3" />
-          <h3 className="text-xs font-bold text-slate-700">Tidak Ada Perubahan Aktif</h3>
-          <p className="text-[11px] text-slate-400 mt-1 max-w-xs">
-            Pilih section di kanvas lalu gunakan fitur &quot;Ubah dengan AI&quot; untuk mengajukan revisi.
-          </p>
-        </div>
-      )}
+      {/* Tab: Revisions (PRD 8.2 & TASK-016) */}
+      {activeTab === "revisions" && <RevisionPanel />}
     </aside>
   );
 }

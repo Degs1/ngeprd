@@ -38,6 +38,49 @@ export interface GenerationProgress {
   currentSectionId?: string;
 }
 
+export interface ClientChangeItemSnapshot {
+  title: string;
+  content: string;
+  diagramCode?: string;
+}
+
+export interface ClientChangeItem {
+  sectionId: string;
+  role: "origin" | "impacted";
+  reason: string;
+  detectedBy: "origin" | "ai" | "term-match";
+  baseRev: number;
+  before: ClientChangeItemSnapshot;
+  after: ClientChangeItemSnapshot | null;
+  status: "pending" | "ready" | "failed";
+  error?: { code: string; message: string };
+  appliedRev?: number;
+}
+
+export interface ClientChangeSet {
+  _id: string;
+  ownerId?: string;
+  docId: string;
+  originSectionId: string;
+  instruction: string;
+  status: "generating" | "pending" | "applied" | "rejected" | "reverted" | "failed";
+  rationale?: string;
+  warnings?: string[];
+  keyDecisionChanges?: { before?: string; after: string }[];
+  items: ClientChangeItem[];
+  error?: { code: string; message: string };
+  createdAt?: string | Date;
+  updatedAt?: string | Date;
+  resolvedAt?: string | Date;
+}
+
+export interface ChangeSetProgress {
+  step: "idle" | "analyzing" | "propagating" | "ready" | "failed";
+  current: number;
+  total: number;
+  message?: string;
+}
+
 export interface WorkspaceState {
   prdId: string | null;
   document: PrdDocument | null;
@@ -60,6 +103,19 @@ export interface WorkspaceState {
   generationProgress: GenerationProgress;
   abortController: AbortController | null;
 
+  // ChangeSet and AI Revision state (TASK-016)
+  activeChangeSet: ClientChangeSet | null;
+  changeSetHistory: ClientChangeSet[];
+  changeSetProgress: ChangeSetProgress;
+  selectedChangeItemIds: string[];
+  changeSetRedirect: { sectionId: string; reason: string } | null;
+  isCreatingChangeSet: boolean;
+  isApplyingChangeSet: boolean;
+  isRevertingChangeSet: boolean;
+  changeSetError: string | null;
+  changeSetConflicts: Array<{ sectionId: string; baseRev: number; currentRev: number }> | null;
+  changesetAbortController: AbortController | null;
+
   // Layout persistence
   isSavingLayout: boolean;
 
@@ -68,7 +124,7 @@ export interface WorkspaceState {
   setDocument: (doc: PrdDocument) => void;
   onNodesChange: (changes: NodeChanges) => void;
   onEdgesChange: (changes: EdgeChanges) => void;
-  onNodeDragStop: (event: React.MouseEvent, node: Node) => void;
+  onNodeDragStop: (event: any, node: Node) => void;
   selectNode: (id: string | null) => void;
   toggleChapter: (chapterId: string) => void;
   setAllChaptersCollapsed: (collapsed: boolean) => void;
@@ -96,6 +152,30 @@ export interface WorkspaceState {
     currentRev?: number;
     error?: string;
   }>;
+
+  // ChangeSet actions (TASK-016)
+  createChangeSet: (originSectionId: string, instruction: string) => Promise<boolean>;
+  applyChangeSet: (
+    changeSetId: string,
+    sectionIds?: string[]
+  ) => Promise<{
+    success: boolean;
+    conflicts?: Array<{ sectionId: string; baseRev: number; currentRev: number }>;
+    error?: string;
+  }>;
+  rejectChangeSet: (changeSetId: string) => Promise<boolean>;
+  revertChangeSet: (changeSetId: string) => Promise<{
+    success: boolean;
+    revertedSectionIds?: string[];
+    skipped?: string[];
+    error?: string;
+  }>;
+  toggleChangeItemSelection: (sectionId: string) => void;
+  selectAllChangeItems: () => void;
+  deselectImpactedChangeItems: () => void;
+  clearChangeSetRedirect: () => void;
+  clearChangeSetError: () => void;
+  loadActiveChangeSet: (docId: string) => Promise<void>;
 }
 
 // Debounce timer for saving layout
@@ -120,6 +200,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   generationProgress: { total: 0, ready: 0, failed: 0 },
   abortController: null,
 
+  // ChangeSet and AI Revision state (TASK-016)
+  activeChangeSet: null,
+  changeSetHistory: [],
+  changeSetProgress: { step: "idle", current: 0, total: 0 },
+  selectedChangeItemIds: [],
+  changeSetRedirect: null,
+  isCreatingChangeSet: false,
+  isApplyingChangeSet: false,
+  isRevertingChangeSet: false,
+  changeSetError: null,
+  changeSetConflicts: null,
+  changesetAbortController: null,
+
   isSavingLayout: false,
 
   loadPrd: async (id: string) => {
@@ -142,6 +235,10 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         edges,
         isLoading: false,
       });
+
+      // Load active or recent changesets for this PRD (TASK-016)
+      get().loadActiveChangeSet(id).catch(() => {});
+
       return true;
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "Gagal memuat dokumen";
@@ -706,6 +803,559 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         success: false,
         error: err instanceof Error ? err.message : "Gagal menyimpan perubahan",
       };
+    }
+  },
+
+  createChangeSet: async (originSectionId: string, instruction: string) => {
+    const { prdId, document } = get();
+    if (!prdId || !document) return false;
+
+    // Clear previous error, redirect, and reset progress
+    set({
+      isCreatingChangeSet: true,
+      changeSetError: null,
+      changeSetRedirect: null,
+      changeSetConflicts: null,
+      activeTab: "revisions",
+      changeSetProgress: {
+        step: "analyzing",
+        current: 0,
+        total: 0,
+        message: "Menganalisis dampak...",
+      },
+    });
+
+    const abortController = new AbortController();
+    set({ changesetAbortController: abortController });
+
+    try {
+      const res = await fetch(`/api/prds/${prdId}/changesets`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ originSectionId, instruction }),
+        signal: abortController.signal,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => null);
+        if (res.status === 409) {
+          // ChangeSet active already exists - reload changesets to display it
+          await get().loadActiveChangeSet(prdId);
+          set({
+            isCreatingChangeSet: false,
+            changeSetError:
+              "Terdapat change set aktif yang sedang berlangsung atau menunggu persetujuan.",
+          });
+          return false;
+        }
+        throw new Error(
+          errData?.error?.message || `Gagal mengajukan revisi (${res.statusText})`
+        );
+      }
+
+      if (!res.body) {
+        throw new Error("Respons stream tidak tersedia");
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+
+      const parser = createSseStreamParser((event) => {
+        const evName = event.event;
+        const data = event.data as Record<string, any>;
+
+        if (evName === "changeset.started") {
+          const originSec = document.sections.find((s) => s.id === originSectionId);
+          const newCs: ClientChangeSet = {
+            _id: data.changesetId,
+            docId: prdId,
+            originSectionId,
+            instruction,
+            status: "generating",
+            rationale: "",
+            warnings: [],
+            keyDecisionChanges: [],
+            items: originSec
+              ? [
+                  {
+                    sectionId: originSectionId,
+                    role: "origin",
+                    reason: instruction,
+                    detectedBy: "origin",
+                    baseRev: originSec.rev,
+                    before: {
+                      title: originSec.title,
+                      content: originSec.content,
+                      diagramCode: originSec.diagram?.code,
+                    },
+                    after: null,
+                    status: "pending",
+                  },
+                ]
+              : [],
+          };
+          set({
+            activeChangeSet: newCs,
+            selectedChangeItemIds: [originSectionId],
+            changeSetProgress: {
+              step: "analyzing",
+              current: 0,
+              total: 0,
+              message: "Menganalisis dampak...",
+            },
+          });
+        } else if (evName === "origin.ready") {
+          set((state) => {
+            if (!state.activeChangeSet) return {};
+            const currentOrigin = state.activeChangeSet.items.find(
+              (it) => it.sectionId === originSectionId
+            );
+            const updatedOrigin: ClientChangeItem = currentOrigin
+              ? { ...currentOrigin, after: data.after, status: "ready" }
+              : {
+                  sectionId: originSectionId,
+                  role: "origin",
+                  reason: instruction,
+                  detectedBy: "origin",
+                  baseRev: 1,
+                  before: { title: "", content: "" },
+                  after: data.after,
+                  status: "ready",
+                };
+
+            const remainingItems = state.activeChangeSet.items.filter(
+              (it) => it.sectionId !== originSectionId
+            );
+
+            return {
+              activeChangeSet: {
+                ...state.activeChangeSet,
+                rationale: data.rationale || state.activeChangeSet.rationale,
+                warnings: data.warnings || state.activeChangeSet.warnings,
+                keyDecisionChanges:
+                  data.keyDecisionChanges || state.activeChangeSet.keyDecisionChanges,
+                items: [updatedOrigin, ...remainingItems],
+              },
+            };
+          });
+        } else if (evName === "impact.ready") {
+          set((state) => {
+            if (!state.activeChangeSet) return {};
+            const existingOrigin = state.activeChangeSet.items.find(
+              (it) => it.sectionId === originSectionId
+            );
+            const impactList = (data.items || []) as Array<{
+              sectionId: string;
+              reason: string;
+              detectedBy: "origin" | "ai" | "term-match";
+            }>;
+
+            const newImpactedItems: ClientChangeItem[] = impactList.map((imp) => {
+              const sec = document.sections.find((s) => s.id === imp.sectionId);
+              return {
+                sectionId: imp.sectionId,
+                role: "impacted",
+                reason: imp.reason,
+                detectedBy: imp.detectedBy,
+                baseRev: sec?.rev || 1,
+                before: {
+                  title: sec?.title || "Section",
+                  content: sec?.content || "",
+                  diagramCode: sec?.diagram?.code,
+                },
+                after: null,
+                status: "pending",
+              };
+            });
+
+            const allSectionIds = [
+              originSectionId,
+              ...newImpactedItems.map((i) => i.sectionId),
+            ];
+
+            return {
+              activeChangeSet: {
+                ...state.activeChangeSet,
+                items: existingOrigin
+                  ? [existingOrigin, ...newImpactedItems]
+                  : newImpactedItems,
+              },
+              selectedChangeItemIds: allSectionIds,
+              changeSetProgress: {
+                step: "propagating",
+                current: 0,
+                total: impactList.length,
+                message:
+                  impactList.length > 0
+                    ? `Menyusun perubahan 0/${impactList.length}...`
+                    : "Menganalisis dampak selesai",
+              },
+            };
+          });
+        } else if (evName === "item.ready") {
+          set((state) => {
+            if (!state.activeChangeSet) return {};
+            const updatedItems = state.activeChangeSet.items.map((it) =>
+              it.sectionId === data.sectionId
+                ? { ...it, after: data.after, status: "ready" as const }
+                : it
+            );
+            const readyCount = updatedItems.filter(
+              (it) =>
+                it.role === "impacted" &&
+                (it.status === "ready" || it.status === "failed")
+            ).length;
+            const totalImpacted = updatedItems.filter(
+              (it) => it.role === "impacted"
+            ).length;
+
+            return {
+              activeChangeSet: {
+                ...state.activeChangeSet,
+                items: updatedItems,
+              },
+              changeSetProgress: {
+                ...state.changeSetProgress,
+                current: readyCount,
+                total: totalImpacted,
+                message: `Menyusun perubahan ${readyCount}/${totalImpacted}...`,
+              },
+            };
+          });
+        } else if (evName === "item.failed") {
+          set((state) => {
+            if (!state.activeChangeSet) return {};
+            const updatedItems = state.activeChangeSet.items.map((it) =>
+              it.sectionId === data.sectionId
+                ? {
+                    ...it,
+                    status: "failed" as const,
+                    error: { code: data.code, message: data.message },
+                  }
+                : it
+            );
+            const processedCount = updatedItems.filter(
+              (it) =>
+                it.role === "impacted" &&
+                (it.status === "ready" || it.status === "failed")
+            ).length;
+            const totalImpacted = updatedItems.filter(
+              (it) => it.role === "impacted"
+            ).length;
+
+            return {
+              activeChangeSet: {
+                ...state.activeChangeSet,
+                items: updatedItems,
+              },
+              changeSetProgress: {
+                ...state.changeSetProgress,
+                current: processedCount,
+                total: totalImpacted,
+                message: `Menyusun perubahan ${processedCount}/${totalImpacted}...`,
+              },
+            };
+          });
+        } else if (evName === "changeset.redirect") {
+          set({
+            activeChangeSet: null,
+            changeSetRedirect: {
+              sectionId: data.sectionId,
+              reason: data.reason,
+            },
+            changeSetProgress: {
+              step: "idle",
+              current: 0,
+              total: 0,
+              message: "",
+            },
+          });
+        } else if (evName === "changeset.ready") {
+          set((state) => {
+            if (!state.activeChangeSet) return {};
+            return {
+              activeChangeSet: {
+                ...state.activeChangeSet,
+                status: "pending",
+              },
+              changeSetProgress: {
+                step: "ready",
+                current: state.activeChangeSet.items.length,
+                total: state.activeChangeSet.items.length,
+                message: "Perubahan siap ditinjau",
+              },
+            };
+          });
+        } else if (evName === "changeset.failed") {
+          set({
+            changeSetError: data.message || "Gagal menyusun perubahan",
+            changeSetProgress: {
+              step: "failed",
+              current: 0,
+              total: 0,
+              message: data.message || "Gagal menyusun perubahan",
+            },
+          });
+        }
+      });
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        const text = decoder.decode(value, { stream: true });
+        parser.feed(text);
+      }
+      parser.flush();
+
+      return true;
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
+        console.log("Changeset generation connection aborted");
+      } else {
+        console.error("Error creating changeset:", err);
+        set({
+          changeSetError:
+            err instanceof Error ? err.message : "Gagal mengajukan revisi",
+          changeSetProgress: {
+            step: "failed",
+            current: 0,
+            total: 0,
+            message: "Terjadi kesalahan pada revisi AI",
+          },
+        });
+      }
+      return false;
+    } finally {
+      set({ isCreatingChangeSet: false, changesetAbortController: null });
+    }
+  },
+
+  applyChangeSet: async (changeSetId: string, sectionIds?: string[]) => {
+    const { prdId } = get();
+    if (!prdId) return { success: false, error: "PRD document not loaded" };
+
+    set({ isApplyingChangeSet: true, changeSetError: null, changeSetConflicts: null });
+    try {
+      const res = await fetch(`/api/prds/${prdId}/changesets/${changeSetId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "apply",
+          sectionIds: sectionIds && sectionIds.length > 0 ? sectionIds : undefined,
+        }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 409) {
+        const conflicts = data?.conflicts || data?.error?.conflicts || [];
+        set({
+          changeSetConflicts: conflicts,
+          changeSetError: "Konflik versi: Section telah berubah sejak revisi dibuat.",
+        });
+        return { success: false, conflicts };
+      }
+
+      if (!res.ok) {
+        const msg = data?.error?.message || "Gagal menerapkan perubahan";
+        set({ changeSetError: msg });
+        return { success: false, error: msg };
+      }
+
+      // Success! Refresh PRD to update node contents and key decisions on canvas and outline
+      await get().loadPrd(prdId);
+
+      // Update active changeset state to 'applied'
+      set((state) => ({
+        activeChangeSet: state.activeChangeSet
+          ? { ...state.activeChangeSet, status: "applied", resolvedAt: new Date() }
+          : null,
+        changeSetProgress: {
+          step: "ready",
+          current: 0,
+          total: 0,
+          message: "Perubahan telah diterapkan",
+        },
+      }));
+
+      return { success: true };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal menerapkan perubahan";
+      set({ changeSetError: msg });
+      return { success: false, error: msg };
+    } finally {
+      set({ isApplyingChangeSet: false });
+    }
+  },
+
+  rejectChangeSet: async (changeSetId: string) => {
+    const { prdId } = get();
+    if (!prdId) return false;
+
+    try {
+      const res = await fetch(`/api/prds/${prdId}/changesets/${changeSetId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "reject" }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        set({ changeSetError: data?.error?.message || "Gagal menolak perubahan" });
+        return false;
+      }
+
+      set((state) => ({
+        activeChangeSet: state.activeChangeSet
+          ? { ...state.activeChangeSet, status: "rejected", resolvedAt: new Date() }
+          : null,
+        changeSetProgress: { step: "idle", current: 0, total: 0 },
+      }));
+
+      return true;
+    } catch (err: unknown) {
+      set({
+        changeSetError: err instanceof Error ? err.message : "Gagal menolak perubahan",
+      });
+      return false;
+    }
+  },
+
+  revertChangeSet: async (changeSetId: string) => {
+    const { prdId } = get();
+    if (!prdId) return { success: false, error: "PRD document not loaded" };
+
+    set({ isRevertingChangeSet: true, changeSetError: null });
+    try {
+      const res = await fetch(`/api/prds/${prdId}/changesets/${changeSetId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revert" }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (!res.ok) {
+        const msg = data?.error?.message || "Gagal mengurungkan perubahan";
+        set({ changeSetError: msg });
+        return { success: false, error: msg };
+      }
+
+      // Refresh PRD to revert canvas and outline contents back
+      await get().loadPrd(prdId);
+
+      set((state) => ({
+        activeChangeSet: state.activeChangeSet
+          ? { ...state.activeChangeSet, status: "reverted", resolvedAt: new Date() }
+          : null,
+        changeSetProgress: { step: "idle", current: 0, total: 0 },
+      }));
+
+      return {
+        success: true,
+        revertedSectionIds: data?.revertedSectionIds,
+        skipped: data?.skipped,
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Gagal mengurungkan perubahan";
+      set({ changeSetError: msg });
+      return { success: false, error: msg };
+    } finally {
+      set({ isRevertingChangeSet: false });
+    }
+  },
+
+  toggleChangeItemSelection: (sectionId: string) => {
+    set((state) => {
+      // Origin section can NEVER be unselected (FR-AI-05)
+      if (state.activeChangeSet?.originSectionId === sectionId) {
+        return {};
+      }
+
+      const currentSelected = state.selectedChangeItemIds;
+      const isAlreadySelected = currentSelected.includes(sectionId);
+      const updatedSelected = isAlreadySelected
+        ? currentSelected.filter((id) => id !== sectionId)
+        : [...currentSelected, sectionId];
+
+      return { selectedChangeItemIds: updatedSelected };
+    });
+  },
+
+  selectAllChangeItems: () => {
+    set((state) => {
+      if (!state.activeChangeSet) return {};
+      const allIds = state.activeChangeSet.items.map((i) => i.sectionId);
+      return { selectedChangeItemIds: allIds };
+    });
+  },
+
+  deselectImpactedChangeItems: () => {
+    set((state) => {
+      if (!state.activeChangeSet) return {};
+      // Keep only origin section selected
+      return { selectedChangeItemIds: [state.activeChangeSet.originSectionId] };
+    });
+  },
+
+  clearChangeSetRedirect: () => {
+    set({ changeSetRedirect: null });
+  },
+
+  clearChangeSetError: () => {
+    set({ changeSetError: null, changeSetConflicts: null });
+  },
+
+  loadActiveChangeSet: async (docId: string) => {
+    try {
+      const res = await fetch(`/api/prds/${docId}/changesets`, { cache: "no-store" });
+      if (!res.ok) return;
+      const rawList: any[] = await res.json();
+      if (!Array.isArray(rawList) || rawList.length === 0) return;
+
+      const list: ClientChangeSet[] = rawList.map((cs) => ({
+        ...cs,
+        _id:
+          typeof cs._id === "object" && cs._id !== null
+            ? cs._id.toString()
+            : String(cs._id),
+        docId:
+          typeof cs.docId === "object" && cs.docId !== null
+            ? cs.docId.toString()
+            : String(cs.docId),
+      }));
+
+      // Find pending or generating changeset first
+      const active = list.find(
+        (cs) => cs.status === "pending" || cs.status === "generating"
+      );
+      if (active) {
+        const selected = active.items
+          .filter((it) => it.status === "ready" || it.role === "origin")
+          .map((it) => it.sectionId);
+
+        set({
+          activeChangeSet: active,
+          selectedChangeItemIds: selected,
+          changeSetHistory: list,
+        });
+        return;
+      }
+
+      // If no pending, find the most recently applied changeset (for Urungkan)
+      const lastApplied = list.find((cs) => cs.status === "applied");
+      if (lastApplied) {
+        set({
+          activeChangeSet: lastApplied,
+          selectedChangeItemIds: lastApplied.items.map((i) => i.sectionId),
+          changeSetHistory: list,
+        });
+        return;
+      }
+
+      set({ changeSetHistory: list });
+    } catch (err) {
+      console.error("Failed to load active changeset:", err);
     }
   },
 }));

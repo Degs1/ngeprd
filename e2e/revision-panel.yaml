@@ -1,0 +1,7 @@
+name: Revision Panel and ChangeSet Flow
+url: http://localhost:3000/canvas
+---
+- assertVisible:
+    text: "ngePRD"
+- assertVisible:
+    text: "Export PRD"
