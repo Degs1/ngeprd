@@ -1,96 +1,91 @@
 "use client";
 
-import React, { useState, useEffect, useCallback } from "react";
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
+import { ReactFlowProvider } from "@xyflow/react";
 import {
   ArrowLeft,
   Sparkles,
   Loader2,
   AlertCircle,
-  FileText,
   RotateCcw,
-  CheckCircle2,
-  Clock,
-  Layers,
-  HelpCircle,
   Pencil,
   Check,
   X,
+  LayoutGrid,
+  Download,
+  Square,
+  Play,
 } from "lucide-react";
 import StatusChip from "@/components/dashboard/StatusChip";
 import BrainstormWizard from "@/components/brainstorm/BrainstormWizard";
-import { usePrdStore, type PrdStatus } from "@/store/usePrdStore";
-import type { BrainstormQuestion, BrainstormAnswer } from "@/lib/schemas/prd";
+import WorkspaceCanvas from "@/components/canvas/WorkspaceCanvas";
+import OutlinePanel from "@/components/outline/OutlinePanel";
+import PrdDrawer from "@/components/prd/PrdDrawer";
+import { usePrdStore } from "@/store/usePrdStore";
+import { useWorkspaceStore } from "@/store/useWorkspaceStore";
+import { docToMarkdown } from "@/lib/converter/docToMarkdown";
+import { getOutlineStats } from "@/lib/converter/outline";
 import { cn } from "@/lib/utils";
-
-interface PrdDetail {
-  _id: string;
-  title: string;
-  idea: string;
-  lang: "id" | "en";
-  status: PrdStatus;
-  brainstorm?: {
-    questions?: BrainstormQuestion[];
-    answers?: BrainstormAnswer[];
-  };
-  keyDecisions?: string[];
-  chapters?: Array<{ id: string; title: string; order: number }>;
-  sections?: Array<{ id: string; title: string; type: string; status: string }>;
-  lastError?: { code: string; message: string; stage: string } | null;
-  createdAt?: string;
-  updatedAt?: string;
-}
 
 export default function PrdWorkspacePage() {
   const params = useParams();
   const router = useRouter();
   const id = params?.id as string;
+
   const { renamePrd } = usePrdStore();
 
-  const [prd, setPrd] = useState<PrdDetail | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  // Workspace store state & actions
+  const document = useWorkspaceStore((state) => state.document);
+  const isLoading = useWorkspaceStore((state) => state.isLoading);
+  const error = useWorkspaceStore((state) => state.error);
+  const loadPrd = useWorkspaceStore((state) => state.loadPrd);
+  const isGenerating = useWorkspaceStore((state) => state.isGenerating);
+  const generationProgress = useWorkspaceStore((state) => state.generationProgress);
+  const startGeneration = useWorkspaceStore((state) => state.startGeneration);
+  const cancelGeneration = useWorkspaceStore((state) => state.cancelGeneration);
+  const relayout = useWorkspaceStore((state) => state.relayout);
+  const outlineTree = useWorkspaceStore((state) => state.outlineTree);
+
+  // Outline panel collapse state
+  const [isOutlineCollapsed, setIsOutlineCollapsed] = useState(false);
+
+  // PRD Export Drawer state
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   // Inline title editing in TopBar
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [editedTitle, setEditedTitle] = useState("");
   const [isSavingTitle, setIsSavingTitle] = useState(false);
 
-  const fetchPrd = useCallback(async () => {
-    if (!id) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/prds/${id}`, { cache: "no-store" });
-      if (!res.ok) {
-        if (res.status === 404) {
-          throw new Error("PRD tidak ditemukan atau telah dihapus");
-        }
-        throw new Error(`Gagal memuat dokumen PRD (${res.statusText})`);
-      }
-      const data = await res.json();
-      setPrd(data);
-      setEditedTitle(data.title);
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Gagal memuat PRD";
-      setError(msg);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [id]);
-
+  // Load PRD document into workspace
   useEffect(() => {
-    fetchPrd();
-  }, [fetchPrd]);
+    if (id) {
+      loadPrd(id);
+    }
+  }, [id, loadPrd]);
+
+  // Sync edited title when document loads
+  useEffect(() => {
+    if (document?.title) {
+      setEditedTitle(document.title);
+    }
+  }, [document?.title]);
+
+  // Auto-connect SSE generator if document is in generating status upon load
+  useEffect(() => {
+    if (document && document.status === "generating" && !isGenerating) {
+      startGeneration();
+    }
+  }, [document?.status, isGenerating, startGeneration]);
 
   const handleSaveTitle = async () => {
-    if (!prd || !editedTitle.trim() || isSavingTitle) return;
+    if (!document || !editedTitle.trim() || isSavingTitle) return;
     setIsSavingTitle(true);
     try {
-      const ok = await renamePrd(prd._id, editedTitle.trim());
+      const ok = await renamePrd(document._id.toString(), editedTitle.trim());
       if (ok) {
-        setPrd((prev) => (prev ? { ...prev, title: editedTitle.trim() } : prev));
         setIsEditingTitle(false);
       }
     } finally {
@@ -98,19 +93,31 @@ export default function PrdWorkspacePage() {
     }
   };
 
+  const handleStartGeneration = useCallback(async () => {
+    await startGeneration();
+  }, [startGeneration]);
+
+  // Outline stats
+  const stats = useMemo(() => getOutlineStats(outlineTree), [outlineTree]);
+
+  // Markdown for export
+  const exportMarkdown = useMemo(() => {
+    return document ? docToMarkdown(document) : "";
+  }, [document]);
+
   // Loading view
-  if (isLoading) {
+  if (isLoading && !document) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center text-slate-500">
         <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
-        <p className="text-sm font-medium text-slate-700">Memuat dokumen PRD...</p>
-        <p className="text-xs text-slate-400 mt-1">Mengambil data arsitektur & status...</p>
+        <p className="text-sm font-medium text-slate-700">Memuat workspace PRD...</p>
+        <p className="text-xs text-slate-400 mt-1">Menyiapkan kanvas dan outline...</p>
       </div>
     );
   }
 
   // Error / Not Found view
-  if (error || !prd) {
+  if (error && !document) {
     return (
       <div className="h-full flex flex-col items-center justify-center p-8 text-center max-w-md mx-auto">
         <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 mb-4">
@@ -123,7 +130,7 @@ export default function PrdWorkspacePage() {
         <div className="mt-6 flex items-center gap-3">
           <button
             type="button"
-            onClick={() => fetchPrd()}
+            onClick={() => loadPrd(id)}
             className="px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
           >
             Coba Lagi
@@ -139,259 +146,240 @@ export default function PrdWorkspacePage() {
     );
   }
 
-  return (
-    <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
-      {/* TopBar (Section 8.2) */}
-      <header className="h-14 border-b border-slate-200 bg-white px-4 md:px-6 flex items-center justify-between shrink-0 shadow-xs">
-        <div className="flex items-center gap-3 min-w-0">
-          <Link
-            href="/"
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
-            title="Kembali ke Dashboard"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
+  if (!document) return null;
 
-          {isEditingTitle ? (
-            <div className="flex items-center gap-1.5">
-              <input
-                type="text"
-                value={editedTitle}
-                onChange={(e) => setEditedTitle(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleSaveTitle();
-                  if (e.key === "Escape") {
-                    setIsEditingTitle(false);
-                    setEditedTitle(prd.title);
-                  }
-                }}
-                autoFocus
-                disabled={isSavingTitle}
-                className="px-2.5 py-1 text-sm font-semibold border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white w-64 md:w-80"
-              />
-              <button
-                type="button"
-                onClick={handleSaveTitle}
-                disabled={isSavingTitle || !editedTitle.trim()}
-                className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
-              >
-                <Check className="w-4 h-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditingTitle(false);
-                  setEditedTitle(prd.title);
-                }}
-                className="p-1 text-slate-400 hover:bg-slate-100 rounded"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2 min-w-0 group">
-              <h1 className="text-sm md:text-base font-bold text-slate-900 truncate">
-                {prd.title}
-              </h1>
-              <button
-                type="button"
-                onClick={() => {
-                  setEditedTitle(prd.title);
-                  setIsEditingTitle(true);
-                }}
-                className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600 rounded transition-opacity"
-                title="Ganti judul"
-              >
-                <Pencil className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          )}
+  // View 1: Brainstorming Wizard
+  if (document.status === "brainstorming") {
+    return (
+      <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
+        {/* TopBar */}
+        <header className="h-14 border-b border-slate-200 bg-white px-4 md:px-6 flex items-center justify-between shrink-0 shadow-xs">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link
+              href="/"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title="Kembali ke Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
+            <h1 className="text-sm md:text-base font-bold text-slate-900 truncate">
+              {document.title}
+            </h1>
+            <StatusChip status="brainstorming" size="md" />
+          </div>
+        </header>
 
-          <StatusChip status={prd.status} size="md" />
-        </div>
-
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={fetchPrd}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors"
-            title="Muat ulang status"
-          >
-            <RotateCcw className="w-4 h-4" />
-          </button>
-        </div>
-      </header>
-
-      {/* Main Workspace Placeholder views by status */}
-      <main className="flex-1 overflow-y-auto p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-          {/* Status 1: Brainstorming */}
-          {prd.status === "brainstorming" && (
+        <main className="flex-1 overflow-y-auto p-4 md:p-8">
+          <div className="max-w-4xl mx-auto">
             <BrainstormWizard
-              prdId={prd._id}
-              idea={prd.idea}
-              initialQuestions={prd.brainstorm?.questions || []}
-              initialAnswers={prd.brainstorm?.answers || []}
+              prdId={document._id.toString()}
+              idea={document.idea}
+              initialQuestions={document.brainstorm?.questions || []}
+              initialAnswers={document.brainstorm?.answers || []}
               onAnswersUpdated={(updatedAnswers) => {
-                setPrd((prev) =>
-                  prev
+                // Update local document
+                useWorkspaceStore.setState((prev) => ({
+                  document: prev.document
                     ? {
-                        ...prev,
+                        ...prev.document,
                         brainstorm: {
-                          ...prev.brainstorm,
+                          ...prev.document.brainstorm,
                           answers: updatedAnswers,
                         },
                       }
-                    : prev
-                );
+                    : prev.document,
+                }));
               }}
               onGeneratePrd={() => {
-                setPrd((prev) =>
-                  prev ? { ...prev, status: "generating" } : prev
-                );
+                handleStartGeneration();
               }}
             />
-          )}
+          </div>
+        </main>
+      </div>
+    );
+  }
 
-          {/* Status 2: Generating */}
-          {prd.status === "generating" && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-600">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">
-                    Sedang Menyusun PRD...
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Pipeline Planner & Section Writer sedang memproses dokumen
-                  </p>
-                </div>
-              </div>
+  // View 2, 3, 4: Workspace Canvas with Outline Panel
+  return (
+    <ReactFlowProvider>
+      <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
+        {/* TopBar (Section 8.2) */}
+        <header className="h-14 border-b border-slate-200 bg-white px-4 md:px-6 flex items-center justify-between shrink-0 shadow-xs z-20">
+          <div className="flex items-center gap-3 min-w-0">
+            <Link
+              href="/"
+              className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors"
+              title="Kembali ke Dashboard"
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Link>
 
-              {/* Progress skeleton bar */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between text-xs text-slate-500 mb-2">
-                  <span>Proses generate dokumen</span>
-                  <span className="font-semibold text-indigo-600 animate-pulse">
-                    Memproses section...
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-slate-100 overflow-hidden">
-                  <div className="h-full bg-indigo-600 rounded-full animate-pulse w-2/3 transition-all" />
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60 mb-6">
-                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Ide Proyek
-                </div>
-                <p className="text-sm text-slate-800 leading-relaxed">{prd.idea}</p>
-              </div>
-
-              <p className="text-xs text-slate-500">
-                Dokumen disimpan secara inkremental ke MongoDB. Refresh tidak akan menghilangkan kemajuan yang sudah selesai.
-              </p>
-            </div>
-          )}
-
-          {/* Status 3: Ready */}
-          {prd.status === "ready" && (
-            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700">
-                  <CheckCircle2 className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-slate-900">
-                    PRD Siap Ditinjau
-                  </h2>
-                  <p className="text-xs text-slate-500">
-                    Dokumen spesifikasi lengkap telah dibuat dan tersimpan
-                  </p>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
-                  <div className="text-xs font-semibold text-slate-500">Bab Dokumen</div>
-                  <div className="text-xl font-bold text-slate-800 mt-1">
-                    {prd.chapters?.length || 0}
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
-                  <div className="text-xs font-semibold text-slate-500">Total Section</div>
-                  <div className="text-xl font-bold text-slate-800 mt-1">
-                    {prd.sections?.length || 0}
-                  </div>
-                </div>
-                <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60">
-                  <div className="text-xs font-semibold text-slate-500">Keputusan Kunci</div>
-                  <div className="text-xl font-bold text-slate-800 mt-1">
-                    {prd.keyDecisions?.length || 0}
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-slate-50 border border-slate-200/60 mb-6">
-                <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
-                  Ide Proyek
-                </div>
-                <p className="text-sm text-slate-800 leading-relaxed">{prd.idea}</p>
-              </div>
-
-              <div className="flex items-center gap-3">
+            {/* Editable Title */}
+            {isEditingTitle ? (
+              <div className="flex items-center gap-1.5">
+                <input
+                  type="text"
+                  value={editedTitle}
+                  onChange={(e) => setEditedTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleSaveTitle();
+                    if (e.key === "Escape") {
+                      setIsEditingTitle(false);
+                      setEditedTitle(document.title);
+                    }
+                  }}
+                  autoFocus
+                  disabled={isSavingTitle}
+                  className="px-2.5 py-1 text-sm font-semibold border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white w-60 md:w-72"
+                />
                 <button
                   type="button"
-                  className="px-4 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors"
+                  onClick={handleSaveTitle}
+                  disabled={isSavingTitle || !editedTitle.trim()}
+                  className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
                 >
-                  Tinjau di Canvas
+                  <Check className="w-4 h-4" />
                 </button>
-              </div>
-            </div>
-          )}
-
-          {/* Status 4: Failed */}
-          {prd.status === "failed" && (
-            <div className="bg-white rounded-2xl border border-rose-200 shadow-xs p-6 md:p-8">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-xl bg-rose-100 flex items-center justify-center text-rose-600">
-                  <AlertCircle className="w-5 h-5" />
-                </div>
-                <div>
-                  <h2 className="text-lg font-bold text-rose-900">
-                    Proses Gagal
-                  </h2>
-                  <p className="text-xs text-rose-600">
-                    Terjadi kendala saat memproses dokumen PRD ini
-                  </p>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-xl bg-rose-50 border border-rose-200/70 mb-6">
-                <div className="text-xs font-semibold text-rose-800 mb-1">
-                  Pesan Kesalahan:
-                </div>
-                <p className="text-sm text-rose-700">
-                  {prd.lastError?.message ||
-                    "Dokumen mengalami kegagalan proses. Silakan coba kembali."}
-                </p>
-              </div>
-
-              <div className="flex items-center gap-3">
                 <button
                   type="button"
-                  onClick={() => fetchPrd()}
-                  className="px-4 py-2 text-xs font-medium text-white bg-rose-600 hover:bg-rose-700 rounded-xl transition-colors shadow-xs"
+                  onClick={() => {
+                    setIsEditingTitle(false);
+                    setEditedTitle(document.title);
+                  }}
+                  className="p-1 text-slate-400 hover:bg-slate-100 rounded"
                 >
-                  Coba Lagi
+                  <X className="w-4 h-4" />
                 </button>
               </div>
+            ) : (
+              <div className="flex items-center gap-2 min-w-0 group">
+                <h1 className="text-sm md:text-base font-bold text-slate-900 truncate max-w-xs md:max-w-md">
+                  {document.title}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditedTitle(document.title);
+                    setIsEditingTitle(true);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600 rounded transition-opacity"
+                  title="Ganti judul"
+                >
+                  <Pencil className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            <StatusChip status={document.status} size="md" />
+
+            {/* Section Progress Counter */}
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg">
+              <span>
+                {stats.readySections}/{stats.totalSections} section
+              </span>
+              {isGenerating && (
+                <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping" />
+              )}
             </div>
-          )}
+          </div>
+
+          {/* Action Toolbar */}
+          <div className="flex items-center gap-2">
+            {/* Generation In-Progress / Cancel Button */}
+            {isGenerating ? (
+              <div className="flex items-center gap-2">
+                <div className="hidden md:flex items-center gap-2 text-xs text-indigo-700 bg-indigo-50 px-3 py-1.5 rounded-xl font-medium animate-pulse border border-indigo-200/60">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                  <span>Menulis dokumen...</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={cancelGeneration}
+                  className="px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors flex items-center gap-1.5"
+                >
+                  <Square className="w-3 h-3 fill-current" />
+                  <span>Batalkan</span>
+                </button>
+              </div>
+            ) : (
+              document.status === "failed" && (
+                <button
+                  type="button"
+                  onClick={handleStartGeneration}
+                  className="px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors flex items-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Lanjutkan Generate</span>
+                </button>
+              )
+            )}
+
+            {/* Rapikan Layout (FR-CNV-07) */}
+            <button
+              type="button"
+              onClick={relayout}
+              className="px-3 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center gap-1.5"
+              title="Rapikan tata letak otomatis (Dagre LR)"
+            >
+              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
+              <span className="hidden sm:inline">Rapikan</span>
+            </button>
+
+            {/* Export PRD Button */}
+            <button
+              type="button"
+              onClick={() => setIsDrawerOpen(true)}
+              className="px-3.5 py-1.5 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+            >
+              <Download className="w-3.5 h-3.5" />
+              <span>Export PRD</span>
+            </button>
+          </div>
+        </header>
+
+        {/* Failure Banner if Document Failed */}
+        {document.status === "failed" && (
+          <div className="bg-rose-50 border-b border-rose-200 px-4 py-2.5 flex items-center justify-between text-xs text-rose-800 shrink-0">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <span>
+                {document.lastError?.message ||
+                  "Proses terhenti sebelum semua section selesai. Anda dapat melanjutkan proses kapan saja."}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleStartGeneration}
+              className="font-bold underline hover:text-rose-950 ml-4 shrink-0"
+            >
+              Coba Lagi
+            </button>
+          </div>
+        )}
+
+        {/* Main Split View: Canvas + Outline */}
+        <div className="flex-1 flex flex-row min-h-0 relative overflow-hidden">
+          {/* Main Graph Canvas */}
+          <main className="flex-1 h-full relative">
+            <WorkspaceCanvas />
+          </main>
+
+          {/* Collapsible Right Outline & Revisions Panel */}
+          <OutlinePanel
+            isCollapsed={isOutlineCollapsed}
+            onToggleCollapse={() => setIsOutlineCollapsed(!isOutlineCollapsed)}
+          />
         </div>
-      </main>
-    </div>
+
+        {/* Slide-over Export PRD Drawer */}
+        <PrdDrawer
+          isOpen={isDrawerOpen}
+          onClose={() => setIsDrawerOpen(false)}
+          markdown={exportMarkdown}
+          isLoading={isGenerating}
+        />
+      </div>
+    </ReactFlowProvider>
   );
 }
