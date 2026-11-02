@@ -80,6 +80,22 @@ export interface WorkspaceState {
   handleSseEvent: (event: string, data: unknown) => void;
   addSection: (chapterId: string, title: string, type?: SectionType) => Promise<boolean>;
   deleteSection: (sectionId: string) => Promise<boolean>;
+  updateSectionInStore: (sectionId: string, updates: Partial<Section>) => void;
+  saveSection: (
+    sectionId: string,
+    baseRev: number,
+    updates: {
+      title?: string;
+      content?: string;
+      diagram?: Section["diagram"];
+    }
+  ) => Promise<{
+    success: boolean;
+    rev?: number;
+    conflict?: boolean;
+    currentRev?: number;
+    error?: string;
+  }>;
 }
 
 // Debounce timer for saving layout
@@ -587,6 +603,109 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     } catch (err) {
       console.error("Failed to delete section:", err);
       return false;
+    }
+  },
+
+  updateSectionInStore: (sectionId: string, updates: Partial<Section>) => {
+    const { document } = get();
+    if (!document) return;
+
+    const updatedSections = (document.sections || []).map((s) => {
+      if (s.id !== sectionId) return s;
+      return { ...s, ...updates, updatedAt: new Date() };
+    });
+
+    const updatedDoc = {
+      ...document,
+      sections: updatedSections,
+    };
+
+    const outlineTree = buildOutline(updatedDoc);
+    const sectionNumberMap = buildSectionNumberMap(updatedDoc);
+    const { nodes, edges } = docToFlow(updatedDoc);
+
+    set({
+      document: updatedDoc,
+      outlineTree,
+      sectionNumberMap,
+      nodes,
+      edges,
+    });
+  },
+
+  saveSection: async (
+    sectionId: string,
+    baseRev: number,
+    updates: {
+      title?: string;
+      content?: string;
+      diagram?: Section["diagram"];
+    }
+  ) => {
+    const { prdId, document } = get();
+    if (!prdId || !document) {
+      return { success: false, error: "PRD document not loaded" };
+    }
+
+    try {
+      const res = await fetch(`/api/prds/${prdId}/sections/${sectionId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ baseRev, ...updates }),
+      });
+
+      const data = await res.json().catch(() => null);
+
+      if (res.status === 409) {
+        return {
+          success: false,
+          conflict: true,
+          currentRev: data?.error?.currentRev ?? data?.currentRev,
+        };
+      }
+
+      if (!res.ok) {
+        return {
+          success: false,
+          error: data?.error?.message || "Gagal menyimpan perubahan",
+        };
+      }
+
+      const newRev = data.rev;
+      const updatedSections = (document.sections || []).map((s) => {
+        if (s.id !== sectionId) return s;
+        return {
+          ...s,
+          ...updates,
+          rev: newRev ?? s.rev + 1,
+          updatedAt: new Date(),
+        };
+      });
+
+      const updatedDoc = {
+        ...document,
+        sections: updatedSections,
+      };
+
+      const outlineTree = buildOutline(updatedDoc);
+      const sectionNumberMap = buildSectionNumberMap(updatedDoc);
+      const { nodes, edges } = docToFlow(updatedDoc);
+
+      set({
+        document: updatedDoc,
+        outlineTree,
+        sectionNumberMap,
+        nodes,
+        edges,
+      });
+
+      return { success: true, rev: newRev };
+    } catch (err: unknown) {
+      console.error(`Failed to save section ${sectionId}:`, err);
+      return {
+        success: false,
+        error: err instanceof Error ? err.message : "Gagal menyimpan perubahan",
+      };
     }
   },
 }));
