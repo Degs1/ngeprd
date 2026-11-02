@@ -46,7 +46,9 @@ export default function TopBar({
       onExportPrd();
     } else {
       setPrdDrawerOpen(true);
-      await generatePrd();
+      if (!useCanvasStore.getState().prdMarkdown) {
+        await generatePrd();
+      }
     }
   };
 

@@ -1,5 +1,5 @@
 name: PRD Preview Drawer and Export Features
-url: http://localhost:3000
+url: http://localhost:3000/canvas
 ---
 - assertVisible:
     text: "ngePRD"

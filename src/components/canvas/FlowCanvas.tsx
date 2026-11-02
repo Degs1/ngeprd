@@ -64,7 +64,9 @@ function FlowCanvasContent() {
 
   const handleExportPrd = useCallback(() => {
     setPrdDrawerOpen(true);
-    generatePrd();
+    if (!useCanvasStore.getState().prdMarkdown) {
+      generatePrd();
+    }
   }, [setPrdDrawerOpen, generatePrd]);
 
   return (

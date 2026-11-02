@@ -13,6 +13,7 @@ import type {
   AnswerCounts,
 } from "@/types/canvas";
 import { getLayoutedElements } from "@/lib/layout/dagre";
+import { generateFallbackPrd } from "@/lib/ai/fallbackPrd";
 
 export const initialNodes: CanvasNode[] = [
   {
@@ -125,6 +126,7 @@ export function syncEdgesWithNodeStatus(
 }
 
 const initialCounts = computeCounts(initialNodes);
+const initialPrdMarkdown = generateFallbackPrd("Rancang alur idemu di sini");
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   nodes: initialNodes,
@@ -136,7 +138,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
 
   // PRD State
   currentIdea: undefined,
-  prdMarkdown: null,
+  prdMarkdown: initialPrdMarkdown,
   isPrdDrawerOpen: false,
   isGeneratingPrd: false,
   prdError: null,
@@ -379,7 +381,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => ({
       pendingCount: counts.pending,
       totalCount: counts.total,
       currentIdea: undefined,
-      prdMarkdown: null,
+      prdMarkdown: initialPrdMarkdown,
       isPrdDrawerOpen: false,
       isGeneratingPrd: false,
       prdError: null,

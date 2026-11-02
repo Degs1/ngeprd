@@ -109,9 +109,8 @@ export default function PrdDrawer({
     if (!markdown) return;
 
     try {
-      if (typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
-        await navigator.clipboard.writeText(markdown);
-      } else {
+      let copiedViaExec = false;
+      try {
         const textArea = document.createElement("textarea");
         textArea.value = markdown;
         textArea.style.position = "fixed";
@@ -120,21 +119,34 @@ export default function PrdDrawer({
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        document.execCommand("copy");
+        copiedViaExec = document.execCommand("copy");
         document.body.removeChild(textArea);
+      } catch {
+        // ignore execCommand failure
       }
 
-      setCopied(true);
-      setShowToast(true);
-
-      if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
-      toastTimeoutRef.current = setTimeout(() => {
-        setCopied(false);
-        setShowToast(false);
-      }, 2500);
+      if (!copiedViaExec && typeof navigator !== "undefined" && navigator.clipboard && navigator.clipboard.writeText) {
+        try {
+          await Promise.race([
+            navigator.clipboard.writeText(markdown),
+            new Promise((_, reject) => setTimeout(() => reject(new Error("timeout")), 300)),
+          ]);
+        } catch {
+          // ignore clipboard API error
+        }
+      }
     } catch (err) {
       console.error("Failed to copy markdown to clipboard:", err);
     }
+
+    setCopied(true);
+    setShowToast(true);
+
+    if (toastTimeoutRef.current) clearTimeout(toastTimeoutRef.current);
+    toastTimeoutRef.current = setTimeout(() => {
+      setCopied(false);
+      setShowToast(false);
+    }, 5000);
   };
 
   // Download prd.md file
@@ -167,8 +179,8 @@ export default function PrdDrawer({
       {/* Slide-over Drawer Panel */}
       <aside
         className={cn(
-          "fixed top-0 right-0 bottom-0 z-50 w-full max-w-2xl sm:max-w-3xl lg:max-w-4xl bg-white shadow-2xl flex flex-col border-l border-slate-200 transform transition-transform duration-300 ease-out",
-          isOpen ? "translate-x-0" : "translate-x-full"
+          "fixed top-0 right-0 bottom-0 z-50 w-full max-w-2xl sm:max-w-3xl lg:max-w-4xl bg-white shadow-2xl flex flex-col border-l border-slate-200 ",
+          isOpen ? "translate-x-0 pointer-events-auto" : "translate-x-full pointer-events-none"
         )}
         role="dialog"
         aria-modal="true"
