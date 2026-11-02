@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap');
 @import "@xyflow/react/dist/style.css";
 
 @tailwind base;
@@ -5,8 +6,19 @@
 @tailwind utilities;
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: #ffffff;
+  --foreground: #20242c;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
 }
 
 body {
@@ -14,7 +26,24 @@ body {
   background: var(--background);
   margin: 0;
   padding: 0;
-  overflow: hidden;
-  height: 100vh;
+  min-height: 100vh;
+  min-height: 100dvh;
   width: 100vw;
+  overflow-x: hidden;
+  -webkit-tap-highlight-color: transparent;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+}
+
+/* Smooth drawer & backdrop utilities */
+.drawer-backdrop {
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.3s ease;
+}
+
+.drawer-panel {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease;
+}
+
+/* Sidebar width transition */
+.sidebar-transition {
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }

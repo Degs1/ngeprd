@@ -108,7 +108,7 @@ export function NodeInstructionBar({
     <div
       onClick={(e: any) => e.stopPropagation()}
       className={cn(
-        "nodrag nowheel w-[380px] max-w-[95vw] bg-white/95 backdrop-blur-md border border-indigo-200/90 rounded-2xl p-2.5 shadow-xl transition-all duration-200 z-50 select-none",
+        "nodrag nowheel w-[380px] max-w-[calc(100vw-32px)] bg-white/95 backdrop-blur-md border border-indigo-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xl transition-all duration-200 z-50 select-none",
         className
       )}
     >
@@ -129,7 +129,7 @@ export function NodeInstructionBar({
           onKeyDown={(e: any) => e.stopPropagation()}
           disabled={isCreatingChangeSet}
           aria-label="Instruksi revisi AI"
-          placeholder="Ubah bagian ini... (Enter untuk kirim)"
+          placeholder="Ubah bagian ini... (Enter kirim)"
           className="flex-1 bg-transparent text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none min-w-0"
         />
 
@@ -137,7 +137,7 @@ export function NodeInstructionBar({
           type="submit"
           disabled={!instruction.trim() || isCreatingChangeSet}
           aria-label="Kirim instruksi ke AI"
-          className="p-1 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0"
+          className="w-7 h-7 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0 flex items-center justify-center cursor-pointer"
           title="Kirim instruksi ke AI"
         >
           {isCreatingChangeSet ? (
@@ -155,7 +155,7 @@ export function NodeInstructionBar({
           type="button"
           onClick={handleRewrite}
           disabled={isCreatingChangeSet}
-          className="shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/70 hover:bg-indigo-100 transition-colors flex items-center gap-1"
+          className="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/70 hover:bg-indigo-100 active:bg-indigo-200 transition-colors flex items-center gap-1 cursor-pointer"
           title="Pintasan instruksi: Tulis ulang bagian ini secara menyeluruh"
         >
           <RotateCcw className="w-2.5 h-2.5" />
@@ -168,7 +168,7 @@ export function NodeInstructionBar({
             type="button"
             onClick={() => handleChipClick(chip)}
             disabled={isCreatingChangeSet}
-            className="shrink-0 px-2 py-0.5 rounded-lg text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200/60 hover:bg-slate-200/70 hover:text-slate-900 transition-colors"
+            className="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200/60 hover:bg-slate-200/70 active:bg-slate-200 hover:text-slate-900 transition-colors cursor-pointer"
           >
             {chip}
           </button>

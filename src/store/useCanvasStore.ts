@@ -13,7 +13,6 @@ import type {
   AnswerCounts,
 } from "@/types/canvas";
 import { getLayoutedElements } from "@/lib/layout/dagre";
-import { generateFallbackPrd } from "@/lib/ai/fallbackPrd";
 
 export const initialNodes: CanvasNode[] = [
   {
@@ -126,7 +125,7 @@ export function syncEdgesWithNodeStatus(
 }
 
 const initialCounts = computeCounts(initialNodes);
-const initialPrdMarkdown = generateFallbackPrd("Rancang alur idemu di sini");
+const initialPrdMarkdown = "";
 
 export const useCanvasStore = create<CanvasState>((set, get) => ({
   nodes: initialNodes,

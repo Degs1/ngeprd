@@ -1,9 +1,5 @@
-import FlowCanvas from "@/components/canvas/FlowCanvas";
+import { redirect } from "next/navigation";
 
 export default function CanvasPage() {
-  return (
-    <main className="w-screen h-screen overflow-hidden">
-      <FlowCanvas />
-    </main>
-  );
+  redirect("/dashboard");
 }

@@ -11,15 +11,12 @@ import {
   useReactFlow,
   type NodeTypes,
 } from "@xyflow/react";
-import QuestionCardNode from "./QuestionCardNode";
 import IdeaCardNode from "./IdeaCardNode";
-import IdeaInputModal from "./IdeaInputModal";
 import TopBar from "./TopBar";
 import PrdDrawer from "@/components/prd/PrdDrawer";
 import { useCanvasStore } from "@/store/useCanvasStore";
 
 const nodeTypes: NodeTypes = {
-  questionCard: QuestionCardNode,
   ideaCard: IdeaCardNode,
   ideaNode: IdeaCardNode,
 };
@@ -114,12 +111,6 @@ function FlowCanvasContent() {
         />
       </ReactFlow>
 
-      {/* Idea Submission Modal */}
-      <IdeaInputModal
-        isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        onSuccess={handleModalSuccess}
-      />
 
       {/* PRD Preview & Export Drawer */}
       <PrdDrawer />

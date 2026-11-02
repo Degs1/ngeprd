@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import Link from "next/link";
 import {
   FileDown,
   Sparkles,
@@ -78,26 +79,34 @@ export default function TopBar({
       )}
     >
       {/* Brand & Project Info */}
-      <div className="pointer-events-auto flex items-center gap-3 px-3.5 py-2 bg-white/95 backdrop-blur-md rounded-xl shadow-xs border border-slate-200/80 transition-all hover:border-slate-300">
-        <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white font-black text-xs shadow-xs shrink-0">
-          P
-        </div>
-        <div className="flex flex-col min-w-0">
-          <div className="flex items-center gap-1.5">
-            <span className="text-xs font-bold text-slate-800 leading-tight">
-              ngePRD
-            </span>
-            <span className="text-[10px] font-medium px-1.5 py-0.2 bg-indigo-50 text-indigo-700 rounded border border-indigo-200/50">
-              v1.0
+      <div className="pointer-events-auto flex items-center gap-2.5 px-3 py-1.5 bg-white/95 backdrop-blur-md rounded-xl shadow-xs border border-slate-200/80 transition-all hover:border-slate-300">
+        <Link href="/" className="flex items-center gap-2 group cursor-pointer" title="Kembali ke Dashboard">
+          <div className="w-7 h-7 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-icon.png"
+              alt="ngePRD"
+              className="w-7 h-7 object-contain"
+            />
+          </div>
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-extrabold tracking-tight text-slate-900 leading-tight flex items-center">
+                <span className="text-sky-500">nge</span>
+                <span className="text-blue-700">PRD</span>
+              </span>
+              <span className="text-[10px] font-medium px-1.5 py-0.2 bg-indigo-50 text-indigo-700 rounded border border-indigo-200/50">
+                v1.0
+              </span>
+            </div>
+            <span
+              className="text-[10px] text-slate-500 font-medium truncate max-w-[140px] sm:max-w-[220px]"
+              title={activeIdea}
+            >
+              {activeIdea || "Visual Discovery Canvas"}
             </span>
           </div>
-          <span
-            className="text-[10px] text-slate-500 font-medium truncate max-w-[140px] sm:max-w-[220px]"
-            title={activeIdea}
-          >
-            {activeIdea || "Visual Discovery Canvas"}
-          </span>
-        </div>
+        </Link>
       </div>
 
       {/* Action Controls & Progress Indicator */}

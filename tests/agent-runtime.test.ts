@@ -1,3 +1,12 @@
+import {
+  registerJob,
+  isJobActive,
+  cancelJob,
+  finishJob,
+  addJobListener,
+  emitToJob,
+  listActiveJobs,
+} from "../src/lib/agent/jobRegistry";
 import test from "node:test";
 import assert from "node:assert/strict";
 import { ObjectId } from "mongodb";
@@ -1138,4 +1147,222 @@ test("runner - handles persistence failure by failing section and continuing oth
     (e) => e.event === "section.completed" && (e.data as any).sectionId === "sec_persist_ok"
   );
   assert.ok(okEvent);
+});
+
+test("runner - honors preAcquiredLock and options.runId without re-locking", async () => {
+  const initialDoc: PrdDocument = {
+    _id: new ObjectId(),
+    ownerId: "owner_test",
+    title: "PreAcquired Lock Test",
+    titleEdited: true,
+    idea: "PreAcquired Idea",
+    lang: "id",
+    status: "generating",
+    brainstorm: { questions: [], answers: [] },
+    keyDecisions: [],
+    chapters: [{ id: "chap_1", title: "Bab 1", order: 1 }],
+    sections: [
+      {
+        id: "sec_1",
+        chapterId: "chap_1",
+        type: "overview",
+        title: "Overview",
+        content: "Content",
+        order: 1,
+        status: "ready",
+        rev: 1,
+        updatedAt: new Date(),
+      },
+    ],
+    edges: [],
+    run: { id: "pre_acquired_run_123", startedAt: new Date(), heartbeatAt: new Date() },
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  };
+
+  let acquireCallCount = 0;
+  let releasedRunId: string | null = null;
+
+  const repo: RunnerRepo = {
+    acquireExecutionLock: async () => {
+      acquireCallCount++;
+      return { acquired: false, doc: null, reason: "RUN_IN_PROGRESS" };
+    },
+    updateExecutionHeartbeat: async () => true,
+    releaseExecutionLock: async (_id, runId) => {
+      releasedRunId = runId;
+      return true;
+    },
+    resetWritingSectionsToPending: async () => true,
+    savePlanToPrdDocument: async () => null,
+    markSectionWriting: async () => true,
+    saveSectionCompleted: async () => ({ success: true, rev: 1 }),
+    saveSectionFailed: async () => true,
+    getPrdById: async () => initialDoc,
+  };
+
+  const result = await runGeneration(initialDoc, {
+    ownerId: "owner_test",
+    runId: "pre_acquired_run_123",
+    preAcquiredLock: true,
+    repo,
+    emit: () => {},
+  });
+
+  assert.equal(acquireCallCount, 0, "acquireExecutionLock must not be called when preAcquiredLock=true");
+  assert.equal(result.runId, "pre_acquired_run_123");
+  assert.equal(releasedRunId, "pre_acquired_run_123");
+});
+
+test("JobRegistry - manages concurrent multi-PRD background jobs and listener multiplexing", () => {
+  const doc1 = "doc_multi_1";
+  const doc2 = "doc_multi_2";
+  const controller1 = new AbortController();
+  const controller2 = new AbortController();
+
+  // Register concurrent jobs for two distinct PRDs
+  registerJob(doc1, "run_1", "owner_test", controller1);
+  registerJob(doc2, "run_2", "owner_test", controller2);
+
+  assert.equal(isJobActive(doc1), true);
+  assert.equal(isJobActive(doc2), true);
+
+  const active = listActiveJobs();
+  assert.ok(active.some((j) => j.docId === doc1));
+  assert.ok(active.some((j) => j.docId === doc2));
+
+  // Add listener to doc1
+  const received: string[] = [];
+  const unsubscribe = addJobListener(doc1, (event, data) => {
+    received.push(event);
+  });
+
+  emitToJob(doc1, "section.started", { sectionId: "sec_1" });
+  emitToJob(doc2, "section.started", { sectionId: "sec_2" });
+
+  assert.equal(received.length, 1);
+  assert.equal(received[0], "section.started");
+
+  // Cancel doc1
+  const wasCancelled = cancelJob(doc1, "User clicked cancel");
+  assert.equal(wasCancelled, true);
+  assert.equal(controller1.signal.aborted, true);
+  assert.equal(isJobActive(doc1), false);
+  // doc2 must remain active and unharmed
+  assert.equal(isJobActive(doc2), true);
+  assert.equal(controller2.signal.aborted, false);
+
+  // Finish doc2
+  finishJob(doc2, "run_2");
+  assert.equal(isJobActive(doc2), false);
+
+  if (unsubscribe) unsubscribe();
+});
+
+test("PlannerAiOutputSchema - normalizes case, synonyms, and diagram hints without schema validation failure", () => {
+  const rawWithSynonyms = {
+    title: "Aplikasi Manajemen Gudang",
+    keyDecisions: [
+      "Next.js App Router",
+      "MongoDB Atlas",
+      "Barcode scanning via camera",
+    ],
+    chapters: [
+      {
+        key: "chap_intro",
+        title: "1. Pendahuluan",
+        sections: [
+          {
+            key: "sec_1",
+            type: "Introduction", // Synonym for overview with mixed case
+            title: "Gambaran Proyek",
+            brief: "Ringkasan sistem",
+            dependsOn: [],
+          },
+          {
+            key: "sec_2",
+            type: "Background", // Synonym for problem
+            title: "Masalah Pergudangan",
+            brief: "Pencatatan manual sering keliru",
+            dependsOn: ["sec_1"],
+          },
+          {
+            key: "sec_3",
+            type: "Target_Audience", // Synonym for users
+            title: "Staf & Manajer Gudang",
+            brief: "Profil pengguna",
+            dependsOn: ["sec_1"],
+          },
+        ],
+      },
+      {
+        key: "chap_fitur",
+        title: "2. Spesifikasi Fitur",
+        sections: [
+          {
+            key: "sec_4",
+            type: "Functional_Requirements", // Synonym for features
+            title: "Fitur Pencatatan Barang",
+            brief: "Inbound and outbound barang",
+            dependsOn: ["sec_2"],
+          },
+          {
+            key: "sec_5",
+            type: "User_Flow", // Synonym for flow
+            title: "Alur Pindai Barcode",
+            brief: "Alur pemindaian",
+            diagramHint: "Flow", // Normalized to flowchart
+            dependsOn: ["sec_4"],
+          },
+        ],
+      },
+      {
+        key: "chap_arsitektur",
+        title: "3. Arsitektur Teknis",
+        sections: [
+          {
+            key: "sec_6",
+            type: "Technical_Stack", // Synonym for tech_stack
+            title: "Stack Teknologi",
+            brief: "Pilihan teknologi",
+            dependsOn: ["sec_4"],
+          },
+          {
+            key: "sec_7",
+            type: "System_Architecture", // Synonym for architecture
+            title: "Arsitektur Layanan",
+            brief: "Diagram sistem",
+            diagramHint: "Sequence_Diagram", // Normalized to sequence
+            dependsOn: ["sec_6"],
+          },
+          {
+            key: "sec_8",
+            type: "Database_Schema", // Synonym for data_model
+            title: "Skema Entitas Gudang",
+            brief: "Data stok dan rak",
+            diagramHint: "ERD", // Normalized to er
+            dependsOn: ["sec_6"],
+          },
+        ],
+      },
+    ],
+  };
+
+  const parsed = PlannerAiOutputSchema.safeParse(rawWithSynonyms);
+  assert.equal(parsed.success, true, "Must successfully normalize synonyms without validation failure");
+  if (parsed.success) {
+    const sec1 = parsed.data.chapters[0].sections[0];
+    assert.equal(sec1.type, "overview");
+    const sec4 = parsed.data.chapters[1].sections[0];
+    assert.equal(sec4.type, "features");
+    const sec5 = parsed.data.chapters[1].sections[1];
+    assert.equal(sec5.type, "flow");
+    assert.equal(sec5.diagramHint, "flowchart");
+    const sec7 = parsed.data.chapters[2].sections[1];
+    assert.equal(sec7.type, "architecture");
+    assert.equal(sec7.diagramHint, "sequence");
+    const sec8 = parsed.data.chapters[2].sections[2];
+    assert.equal(sec8.type, "data_model");
+    assert.equal(sec8.diagramHint, "er");
+  }
 });

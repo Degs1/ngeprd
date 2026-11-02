@@ -73,7 +73,8 @@ function SectionNode({ id, data, selected }: NodeProps) {
     useWorkspaceStore((state) => state.sectionNumberMap.get(id)) ||
     nodeData.number ||
     "1.1";
-  const startGeneration = useWorkspaceStore((state) => state.startGeneration);
+  const startGeneration = useWorkspaceStore((state) => state.startGeneration);
+  const isGenerating = useWorkspaceStore((state) => state.isGenerating);
   const selectNode = useWorkspaceStore((state) => state.selectNode);
   const saveSection = useWorkspaceStore((state) => state.saveSection);
   const updateSectionInStore = useWorkspaceStore(
@@ -346,6 +347,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
 
   const handleRetry = (e: any) => {
     e.stopPropagation();
+    if (isGenerating) return;
     startGeneration([id]);
   };
 
@@ -747,10 +749,17 @@ function SectionNode({ id, data, selected }: NodeProps) {
                 <button
                   type="button"
                   onClick={handleRetry}
-                  className="nodrag nowheel px-2.5 py-1 text-xs font-semibold text-rose-700 bg-rose-100 hover:bg-rose-200 rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
+                  disabled={isGenerating}
+                  className={cn(
+                    "nodrag nowheel px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs",
+                    isGenerating
+                      ? "bg-slate-100 text-slate-400 cursor-not-allowed opacity-60"
+                      : "text-rose-700 bg-rose-100 hover:bg-rose-200"
+                  )}
+                  title={isGenerating ? "Proses generate sedang berjalan..." : "Coba generate ulang bagian ini"}
                 >
-                  <RotateCcw className="w-3 h-3" />
-                  <span>Coba lagi</span>
+                  <RotateCcw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
+                  <span>{isGenerating ? "Sedang generate..." : "Coba lagi"}</span>
                 </button>
               ) : (
                 <button

@@ -132,7 +132,8 @@ export interface WorkspaceState {
   relayout: () => void;
   saveLayoutToServer: () => Promise<boolean>;
   startGeneration: (sectionIds?: string[]) => Promise<void>;
-  cancelGeneration: () => void;
+  cancelGeneration: () => Promise<void>;
+  pollGenerationStatus: (id: string) => void;
   handleSseEvent: (event: string, data: unknown) => void;
   addSection: (chapterId: string, title: string, type?: SectionType) => Promise<boolean>;
   deleteSection: (sectionId: string) => Promise<boolean>;
@@ -180,6 +181,7 @@ export interface WorkspaceState {
 
 // Debounce timer for saving layout
 let layoutSaveTimer: ReturnType<typeof setTimeout> | null = null;
+let generationPollTimer: ReturnType<typeof setInterval> | null = null;
 
 export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   prdId: null,
@@ -388,6 +390,11 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
           const payload = data as RunStartedPayload;
           return {
             isGenerating: true,
+            document: {
+              ...doc,
+              status: "generating" as const,
+              lastError: undefined,
+            },
             generationProgress: {
               total: payload.total,
               ready: 0,
@@ -563,8 +570,19 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   },
 
   startGeneration: async (sectionIds?: string[]) => {
-    const { prdId } = get();
+    const { prdId, isGenerating } = get();
     if (!prdId) return;
+
+    // Prevent concurrent triggers if generation is already running
+    if (isGenerating) {
+      console.warn("Generation already in progress, ignoring duplicate call.");
+      return;
+    }
+
+    if (generationPollTimer) {
+      clearInterval(generationPollTimer);
+      generationPollTimer = null;
+    }
 
     // Abort previous connection if active
     if (get().abortController) {
@@ -572,7 +590,13 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
 
     const controller = new AbortController();
-    set({ isGenerating: true, abortController: controller });
+    set((state) => ({
+      isGenerating: true,
+      abortController: controller,
+      document: state.document
+        ? { ...state.document, status: "generating", lastError: undefined }
+        : state.document,
+    }));
 
     try {
       const res = await fetch(`/api/prds/${prdId}/generate`, {
@@ -584,11 +608,14 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
 
       if (!res.ok) {
         if (res.status === 409) {
-          console.warn("Generation already running for this PRD (HTTP 409)");
+          console.warn("Generation already running for this PRD (HTTP 409). Connecting poller...");
+          set({ isGenerating: true });
+          get().pollGenerationStatus(prdId);
+          return;
         } else {
           console.error("Failed to start generation:", res.statusText);
+          set({ isGenerating: false });
         }
-        set({ isGenerating: false });
         return;
       }
 
@@ -618,15 +645,59 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         console.error("Error during SSE stream reading:", err);
       }
     } finally {
-      set({ isGenerating: false, abortController: null });
+      if (!generationPollTimer) {
+        set({ isGenerating: false, abortController: null });
+      }
     }
   },
 
-  cancelGeneration: () => {
+  pollGenerationStatus: (id: string) => {
+    if (generationPollTimer) {
+      clearInterval(generationPollTimer);
+      generationPollTimer = null;
+    }
+
+    generationPollTimer = setInterval(async () => {
+      const currentPrdId = get().prdId;
+      if (!currentPrdId || currentPrdId !== id) {
+        if (generationPollTimer) {
+          clearInterval(generationPollTimer);
+          generationPollTimer = null;
+        }
+        return;
+      }
+
+      await get().loadPrd(id, false);
+      const doc = get().document;
+      if (!doc || doc.status !== "generating") {
+        if (generationPollTimer) {
+          clearInterval(generationPollTimer);
+          generationPollTimer = null;
+        }
+        set({ isGenerating: false });
+      }
+    }, 3000);
+  },
+
+  cancelGeneration: async () => {
+    const { prdId } = get();
+    if (generationPollTimer) {
+      clearInterval(generationPollTimer);
+      generationPollTimer = null;
+    }
     const { abortController } = get();
     if (abortController) {
       abortController.abort();
-      set({ isGenerating: false, abortController: null });
+    }
+    set({ isGenerating: false, abortController: null });
+
+    if (prdId) {
+      try {
+        await fetch(`/api/prds/${prdId}/cancel`, { method: "POST" });
+        await get().loadPrd(prdId, false);
+      } catch (err) {
+        console.error("Failed to cancel generation on server:", err);
+      }
     }
   },
 

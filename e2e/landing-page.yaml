@@ -1,0 +1,33 @@
+name: Landing Page Assembly and Navigation
+url: http://localhost:3000
+---
+- assertVisible:
+    text: "VISUAL PRD PLANNER UNTUK SOLO BUILDER & ENGINEERING TEAM"
+- assertVisible:
+    text: "Ubah 1 Kalimat Ide Menjadi PRD Terstruktur, Diagram Mermaid, dan Canvas Siap Eksekusi."
+- assertVisible:
+    text: "Mulai Buat PRD Sekarang"
+- assertVisible:
+    text: "Putar Ulang Perakitan Hero"
+- tapOn:
+    text: "Putar Ulang Perakitan Hero"
+- assertVisible:
+    text: "Mulai Buat PRD Sekarang"
+- assertVisible:
+    text: "Alur Kerja"
+- tapOn:
+    text: "Alur Kerja"
+- assertVisible:
+    text: "Bagaimana Ide Anda Berubah Menjadi Rencana Siap Coding"
+- assertVisible:
+    text: "01"
+- assertVisible:
+    text: "02"
+- assertVisible:
+    text: "03"
+- assertVisible:
+    text: "04"
+- assertVisible:
+    text: "05"
+- assertVisible:
+    text: "Lihat Contoh PRD & Canvas"

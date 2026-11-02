@@ -13,6 +13,7 @@ import {
   Clock,
   PanelRightClose,
   PanelRightOpen,
+  X,
 } from "lucide-react";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import { OutlineItem } from "./OutlineItem";
@@ -24,12 +25,16 @@ export interface OutlinePanelProps {
   isCollapsed?: boolean;
   onToggleCollapse?: () => void;
   className?: string;
+  isMobileDrawer?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export default function OutlinePanel({
   isCollapsed = false,
   onToggleCollapse,
   className,
+  isMobileDrawer = false,
+  onCloseMobile,
 }: OutlinePanelProps) {
   const { getNode, setCenter, fitView } = useReactFlow();
 
@@ -94,8 +99,13 @@ export default function OutlinePanel({
           }
         }, 50);
       }
+
+      // Close mobile drawer on item selection if in mobile drawer
+      if (isMobileDrawer && onCloseMobile) {
+        onCloseMobile();
+      }
     },
-    [getNode, selectNode, setCenter]
+    [getNode, selectNode, setCenter, isMobileDrawer, onCloseMobile]
   );
 
   // Chapter click fits canvas viewport to nodes in this chapter (FR-OUT-05)
@@ -157,14 +167,15 @@ export default function OutlinePanel({
     [allSectionIds, handleSectionClick]
   );
 
-  if (isCollapsed) {
+  if (isCollapsed && !isMobileDrawer) {
     return (
-      <div className="border-l border-slate-200 bg-white flex flex-col items-center py-4 px-1 w-12 shrink-0 h-full">
+      <div className="hidden md:flex border-l border-slate-200 bg-white flex-col items-center py-4 px-1 w-12 shrink-0 h-full">
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+          className="p-2 text-slate-500 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
           title="Buka Panel Outline"
+          aria-label="Buka panel outline"
         >
           <PanelRightOpen className="w-5 h-5" />
         </button>
@@ -178,18 +189,20 @@ export default function OutlinePanel({
   return (
     <aside
       className={cn(
-        "w-80 md:w-88 border-l border-slate-200 bg-white flex flex-col h-full shrink-0 select-none shadow-xs z-10",
+        isMobileDrawer
+          ? "w-full h-full bg-white flex flex-col select-none"
+          : "hidden md:flex w-80 md:w-88 border-l border-slate-200 bg-white flex-col h-full shrink-0 select-none shadow-xs z-10",
         className
       )}
     >
-      {/* Top Header with Tabs & Collapse Button */}
+      {/* Top Header with Tabs & Collapse/Close Button */}
       <div className="h-14 border-b border-slate-200 px-4 flex items-center justify-between shrink-0">
         <div className="flex items-center gap-1 bg-slate-100 p-0.5 rounded-xl">
           <button
             type="button"
             onClick={() => setActiveTab("outline")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5",
+              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
               activeTab === "outline"
                 ? "bg-white text-slate-900 shadow-xs"
                 : "text-slate-500 hover:text-slate-800"
@@ -206,7 +219,7 @@ export default function OutlinePanel({
             type="button"
             onClick={() => setActiveTab("revisions")}
             className={cn(
-              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5",
+              "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer",
               activeTab === "revisions"
                 ? "bg-white text-slate-900 shadow-xs"
                 : "text-slate-500 hover:text-slate-800"
@@ -222,12 +235,23 @@ export default function OutlinePanel({
           </button>
         </div>
 
-        {onToggleCollapse && (
+        {isMobileDrawer ? (
+          <button
+            type="button"
+            onClick={onCloseMobile}
+            className="w-8 h-8 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 flex items-center justify-center transition-colors cursor-pointer"
+            title="Tutup Panel"
+            aria-label="Tutup panel"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        ) : onToggleCollapse && (
           <button
             type="button"
             onClick={onToggleCollapse}
-            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+            className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
             title="Sembunyikan Panel"
+            aria-label="Sembunyikan panel"
           >
             <PanelRightClose className="w-4 h-4" />
           </button>
@@ -248,7 +272,7 @@ export default function OutlinePanel({
                 const areAnyCollapsed = Object.values(collapsedChapters).some(Boolean);
                 setAllChaptersCollapsed(!areAnyCollapsed);
               }}
-              className="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1"
+              className="text-[11px] text-indigo-600 hover:text-indigo-800 font-medium flex items-center gap-1 cursor-pointer"
             >
               <ChevronsUpDown className="w-3 h-3" />
               <span>
@@ -287,7 +311,7 @@ export default function OutlinePanel({
                       <button
                         type="button"
                         onClick={() => toggleChapter(chap.chapter.id)}
-                        className="flex items-center gap-2 min-w-0 flex-1 text-left"
+                        className="flex items-center gap-2 min-w-0 flex-1 text-left cursor-pointer"
                       >
                         <span className="text-slate-400">
                           {isCollapsed ? (
@@ -311,10 +335,11 @@ export default function OutlinePanel({
                         <button
                           type="button"
                           onClick={() => handleChapterClick(chap.chapter.id, sectionIds)}
-                          className="text-[10px] text-slate-400 hover:text-indigo-600 hover:bg-white px-1.5 py-0.5 rounded transition-colors"
+                          className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-white rounded transition-colors"
                           title="Fokuskan kanvas ke bab ini"
+                          aria-label={`Fokuskan kanvas ke bab ${chap.chapter.title}`}
                         >
-                          Fokus
+                          <Sparkles className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>

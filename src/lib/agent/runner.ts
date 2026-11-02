@@ -99,27 +99,32 @@ export async function runGeneration(
   const docId = initialDoc._id;
   const emit = options.emit;
   const signal = options.signal;
-  const runId = `run_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+  const runId =
+    options.runId ||
+    `run_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
   const concurrency =
     options.concurrency ||
     Number(process.env.AGENT_CONCURRENCY) ||
     3;
 
-  // 1. Acquire execution lock
-  const lockResult = await repo.acquireExecutionLock(docId, ownerId, runId);
-  if (!lockResult.acquired) {
-    const code =
-      lockResult.reason === "NOT_FOUND" ? "NOT_FOUND" : "RUN_IN_PROGRESS";
-    const message =
-      lockResult.reason === "NOT_FOUND"
-        ? "Dokumen PRD tidak ditemukan"
-        : "Proses generate sedang berjalan untuk dokumen ini";
+  let doc = initialDoc;
 
-    emit("run.failed", { code, message });
-    return { success: false, runId, ready: 0, failed: 0, code, message };
+  // 1. Acquire execution lock (unless pre-acquired by caller)
+  if (!options.preAcquiredLock) {
+    const lockResult = await repo.acquireExecutionLock(docId, ownerId, runId);
+    if (!lockResult.acquired) {
+      const code =
+        lockResult.reason === "NOT_FOUND" ? "NOT_FOUND" : "RUN_IN_PROGRESS";
+      const message =
+        lockResult.reason === "NOT_FOUND"
+          ? "Dokumen PRD tidak ditemukan"
+          : "Proses generate sedang berjalan untuk dokumen ini";
+
+      emit("run.failed", { code, message });
+      return { success: false, runId, ready: 0, failed: 0, code, message };
+    }
+    doc = lockResult.doc || initialDoc;
   }
-
-  let doc = lockResult.doc || initialDoc;
 
   // 2. Start heartbeat timer (every 15s)
   const heartbeatInterval = setInterval(async () => {

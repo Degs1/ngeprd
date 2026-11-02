@@ -6,7 +6,16 @@ import type { PrdChangeSet } from "../schemas/agent";
 export const COLLECTIONS = {
   PRD_DOCUMENTS: "prd_documents",
   PRD_CHANGESETS: "prd_changesets",
+  USER_USAGE: "user_daily_usage",
 } as const;
+
+export interface UserDailyUsageDoc {
+  ownerId: string;
+  dateKey: string;
+  count: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
 
 declare global {
   // eslint-disable-next-line no-var
@@ -60,6 +69,11 @@ export async function getPrdCollection(): Promise<Collection<PrdDocument>> {
 export async function getChangeSetCollection(): Promise<Collection<PrdChangeSet>> {
   const db = await getDb();
   return db.collection<PrdChangeSet>(COLLECTIONS.PRD_CHANGESETS);
+}
+
+export async function getUserUsageCollection(): Promise<Collection<UserDailyUsageDoc>> {
+  const db = await getDb();
+  return db.collection<UserDailyUsageDoc>(COLLECTIONS.USER_USAGE);
 }
 
 export async function closeMongo(): Promise<void> {

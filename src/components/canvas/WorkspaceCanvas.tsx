@@ -78,7 +78,7 @@ export default function WorkspaceCanvas() {
           color="#cbd5e1"
         />
         <Controls
-          className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden"
+          className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden m-2 sm:m-4"
           showInteractive={false}
         />
         <MiniMap
@@ -90,7 +90,7 @@ export default function WorkspaceCanvas() {
             if (status === "failed") return "#ef4444";
             return "#cbd5e1";
           }}
-          className="border border-slate-200 rounded-xl overflow-hidden shadow-xs"
+          className="hidden sm:block border border-slate-200 rounded-xl overflow-hidden shadow-xs"
           maskColor="rgba(241, 245, 249, 0.7)"
         />
       </ReactFlow>

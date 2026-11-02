@@ -45,14 +45,14 @@ export default function AnswerSummary({
   return (
     <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
       {/* Header */}
-      <div className="p-6 md:p-8 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-4 sm:p-6 md:p-8 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-700 shrink-0">
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-lg md:text-xl font-bold text-slate-900">
+              <h2 className="text-base sm:text-lg md:text-xl font-bold text-slate-900">
                 Ringkasan Brainstorming
               </h2>
               <p className="text-xs text-slate-500 mt-0.5">
@@ -61,7 +61,7 @@ export default function AnswerSummary({
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 self-start sm:self-auto">
             <span
               className={cn(
                 "px-3 py-1.5 rounded-full text-xs font-semibold flex items-center gap-1.5",
@@ -88,20 +88,20 @@ export default function AnswerSummary({
         </div>
 
         {/* Idea Banner */}
-        <div className="mt-5 p-4 rounded-xl bg-white border border-slate-200/80 shadow-sm">
-          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
+        <div className="mt-4 sm:mt-5 p-3.5 sm:p-4 rounded-xl bg-white border border-slate-200/80 shadow-2xs">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
             <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
             <span>Ide Proyek</span>
           </div>
-          <p className="text-sm text-slate-800 leading-relaxed font-normal">
+          <p className="text-xs sm:text-sm text-slate-800 leading-relaxed font-normal">
             {idea}
           </p>
         </div>
       </div>
 
       {/* Questions and Answers List */}
-      <div className="p-6 md:p-8 space-y-4">
-        <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
+      <div className="p-4 sm:p-6 md:p-8 space-y-3 sm:space-y-4">
+        <div className="text-[11px] sm:text-xs font-semibold text-slate-500 uppercase tracking-wider">
           Daftar Pertanyaan & Jawaban:
         </div>
 
@@ -115,48 +115,48 @@ export default function AnswerSummary({
             return (
               <div
                 key={question.id}
-                className="p-4 md:p-5 flex flex-col md:flex-row md:items-start justify-between gap-4 hover:bg-slate-50/50 transition-colors"
+                className="p-3.5 sm:p-4 md:p-5 flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 hover:bg-slate-50/50 transition-colors"
               >
-                <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                  <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
+                  <span className="w-6 h-6 rounded-lg bg-slate-100 text-slate-700 text-xs font-bold flex items-center justify-center shrink-0 mt-0.5 font-mono">
                     {String(idx + 1).padStart(2, "0")}
                   </span>
                   <div className="space-y-1.5 min-w-0 flex-1">
-                    <h3 className="text-sm font-semibold text-slate-900 leading-snug">
+                    <h3 className="text-xs sm:text-sm font-semibold text-slate-900 leading-snug">
                       {question.text}
                     </h3>
 
                     {/* Answer Pill */}
-                    <div className="pt-1">
+                    <div className="pt-0.5">
                       {hasAnswer ? (
-                        <div className="flex flex-wrap items-center gap-2">
+                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
                           {isDelegated && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] sm:text-xs font-semibold bg-purple-100 text-purple-800 border border-purple-200">
                               <Sparkles className="w-3 h-3 text-purple-600" />
                               <span>Serahkan ke AI</span>
                             </span>
                           )}
 
                           {isCustom && !isDelegated && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] sm:text-xs font-semibold bg-indigo-100 text-indigo-800 border border-indigo-200">
                               <Edit3 className="w-3 h-3 text-indigo-600" />
                               <span>Jawaban Kustom</span>
                             </span>
                           )}
 
                           {!isCustom && !isDelegated && (
-                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] sm:text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200">
                               <CheckCircle2 className="w-3 h-3 text-emerald-600" />
                               <span>Opsi Terpilih</span>
                             </span>
                           )}
 
-                          <span className="text-xs font-medium text-slate-800 bg-slate-100 px-3 py-1 rounded-lg break-words max-w-xl">
+                          <span className="text-[11px] sm:text-xs font-medium text-slate-800 bg-slate-100 px-2.5 sm:px-3 py-1 rounded-lg break-words max-w-xl">
                             {answer.value}
                           </span>
                         </div>
                       ) : (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-md text-[11px] sm:text-xs font-medium bg-amber-50 text-amber-800 border border-amber-200">
                           <AlertCircle className="w-3 h-3 text-amber-600" />
                           <span>Belum dijawab</span>
                         </span>
@@ -166,11 +166,11 @@ export default function AnswerSummary({
                 </div>
 
                 {/* Edit Button */}
-                <div className="shrink-0 self-end md:self-start">
+                <div className="shrink-0 self-end sm:self-start">
                   <button
                     type="button"
                     onClick={() => onEditQuestion(idx)}
-                    className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition-colors flex items-center gap-1.5"
+                    className="px-3 py-1.5 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 border border-indigo-200/80 rounded-lg transition-colors flex items-center gap-1.5 cursor-pointer active:scale-95"
                   >
                     <Pencil className="w-3 h-3" />
                     <span>Ubah</span>
@@ -183,7 +183,7 @@ export default function AnswerSummary({
       </div>
 
       {/* Action Footer */}
-      <div className="p-6 md:p-8 bg-slate-50 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-4 sm:p-6 md:p-8 bg-slate-50 border-t border-slate-200/80 flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div className="text-xs text-slate-500 flex items-center gap-2">
           <FileText className="w-4 h-4 text-slate-400 shrink-0" />
           <span>
@@ -196,9 +196,9 @@ export default function AnswerSummary({
           onClick={onGeneratePrd}
           disabled={!allAnswered || isGenerating}
           className={cn(
-            "px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all shrink-0",
+            "w-full sm:w-auto px-6 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-xs transition-all shrink-0 cursor-pointer active:scale-[0.98]",
             allAnswered && !isGenerating
-              ? "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer hover:shadow-md"
+              ? "bg-indigo-600 hover:bg-indigo-700 text-white hover:shadow-md"
               : "bg-slate-200 text-slate-400 cursor-not-allowed"
           )}
         >

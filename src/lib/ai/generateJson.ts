@@ -1,44 +1,10 @@
 import { z } from "zod";
 import { generateText, type CoreMessage } from "ai";
 import { getAiClient } from "./client";
+import { AiError, type AiErrorCode } from "./aiError";
+import { aiQueue } from "./aiQueue";
 
-export type AiErrorCode =
-  | "AI_TIMEOUT"
-  | "AI_UNREACHABLE"
-  | "AI_INVALID_OUTPUT"
-  | "AI_AUTH_ERROR"
-  | "AI_SERVER_ERROR"
-  | "AI_RATE_LIMIT";
-
-export class AiError extends Error {
-  code: AiErrorCode;
-  stage?: string;
-  docId?: string;
-  sectionId?: string;
-
-  constructor(
-    code: AiErrorCode,
-    message: string,
-    options?: { stage?: string; docId?: string; sectionId?: string }
-  ) {
-    super(message);
-    this.name = "AiError";
-    this.code = code;
-    this.stage = options?.stage;
-    this.docId = options?.docId;
-    this.sectionId = options?.sectionId;
-  }
-
-  toJSON() {
-    return {
-      error: {
-        code: this.code,
-        message: this.message,
-        stage: this.stage,
-      },
-    };
-  }
-}
+export { AiError, type AiErrorCode };
 
 export interface GenerateJsonOptions<T extends z.ZodTypeAny> {
   stage: string;
@@ -51,6 +17,7 @@ export interface GenerateJsonOptions<T extends z.ZodTypeAny> {
   client?: ReturnType<typeof getAiClient>;
   model?: string;
   signal?: AbortSignal;
+  bypassQueue?: boolean;
 }
 
 /**
@@ -88,14 +55,139 @@ export function extractJsonFromText(raw: string): string {
   return text;
 }
 
+/**
+ * Parses HTTP Retry-After headers or error messages to find recommended delay in milliseconds.
+ */
+export function parseRetryAfterHeader(err: unknown): number | null {
+  if (!err || typeof err !== "object") return null;
+
+  const target = (err as { lastError?: unknown })?.lastError || (err as { cause?: unknown })?.cause || err;
+
+  const headers =
+    (target as { responseHeaders?: Headers | Record<string, string> })?.responseHeaders ||
+    (target as { headers?: Headers | Record<string, string> })?.headers ||
+    (target as { response?: { headers?: Headers | Record<string, string> } })?.response?.headers ||
+    (err as { responseHeaders?: Headers | Record<string, string> })?.responseHeaders ||
+    (err as { headers?: Headers | Record<string, string> })?.headers;
+
+  let rawHeader: string | null = null;
+  let rawMsHeader: string | null = null;
+
+  if (headers) {
+    if (typeof (headers as Headers).get === "function") {
+      rawHeader = (headers as Headers).get("retry-after");
+      rawMsHeader =
+        (headers as Headers).get("retry-after-ms") ||
+        (headers as Headers).get("x-ratelimit-reset-after-ms");
+    } else if (typeof headers === "object") {
+      const h = headers as Record<string, string>;
+      for (const [key, value] of Object.entries(h)) {
+        const lower = key.toLowerCase();
+        if (lower === "retry-after") rawHeader = String(value);
+        if (lower === "retry-after-ms" || lower === "x-ratelimit-reset-after-ms") {
+          rawMsHeader = String(value);
+        }
+      }
+    }
+  }
+
+  if (rawMsHeader) {
+    const ms = Number(rawMsHeader);
+    if (!isNaN(ms) && ms > 0) return ms;
+  }
+
+  if (rawHeader) {
+    const sec = Number(rawHeader);
+    if (!isNaN(sec) && sec >= 0) {
+      return Math.round(sec * 1000);
+    }
+    const parsedDate = Date.parse(rawHeader);
+    if (!isNaN(parsedDate)) {
+      const diff = parsedDate - Date.now();
+      return diff > 0 ? diff : 1000;
+    }
+  }
+
+  // Parse error message text for clues like "retry after 5 seconds" or "try again in 2000ms"
+  const msg = err instanceof Error ? err.message : String(err);
+  const regexSec = /(?:retry after|try again in|resets in)\s*([0-9]+(?:\.[0-9]+)?)\s*(?:s|sec|seconds)/i;
+  const matchSec = msg.match(regexSec);
+  if (matchSec && matchSec[1]) {
+    const sec = parseFloat(matchSec[1]);
+    if (!isNaN(sec) && sec > 0) return Math.round(sec * 1000);
+  }
+
+  const regexMs = /(?:retry after|try again in|resets in)\s*([0-9]+)\s*ms/i;
+  const matchMs = msg.match(regexMs);
+  if (matchMs && matchMs[1]) {
+    const ms = parseInt(matchMs[1], 10);
+    if (!isNaN(ms) && ms > 0) return ms;
+  }
+
+  return null;
+}
+
+/**
+ * Calculates backoff delay in milliseconds for rate limit retries with full jitter.
+ */
+export function calculateRateLimitDelayMs(
+  retryCount: number,
+  err?: unknown,
+  baseDelayMs = 2000,
+  maxDelayMs = 30000
+): number {
+  const explicit = parseRetryAfterHeader(err);
+  if (explicit !== null) {
+    const jitter = Math.floor(Math.random() * Math.min(explicit, 300)) + 10;
+    return Math.min(Math.max(explicit + jitter, 10), maxDelayMs);
+  }
+
+  // Exponential backoff: baseDelay * 2^retryCount + jitter
+  const expDelay = baseDelayMs * Math.pow(2, retryCount);
+  const jitter = Math.floor(Math.random() * 1000);
+  return Math.min(expDelay + jitter, maxDelayMs);
+}
+
+/**
+ * Sleeps for the given duration, aborting early if the AbortSignal triggers.
+ */
+export function sleepWithSignal(ms: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      return reject(
+        new AiError("AI_TIMEOUT", "Operasi AI dibatalkan oleh pengguna", {})
+      );
+    }
+    const timer = setTimeout(() => {
+      if (signal) signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+
+    const onAbort = () => {
+      clearTimeout(timer);
+      if (signal) signal.removeEventListener("abort", onAbort);
+      reject(
+        new AiError("AI_TIMEOUT", "Operasi AI dibatalkan oleh pengguna", {})
+      );
+    };
+
+    if (signal) {
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
+  });
+}
+
 function classifyError(err: unknown): {
   code: AiErrorCode;
   retryable: boolean;
   isAuth: boolean;
   isTimeout: boolean;
 } {
+  const target = (err as { lastError?: unknown })?.lastError || (err as { cause?: unknown })?.cause || err;
   const msg = err instanceof Error ? err.message : String(err);
   const status =
+    (target as { status?: number; statusCode?: number })?.status ||
+    (target as { status?: number; statusCode?: number })?.statusCode ||
     (err as { status?: number; statusCode?: number })?.status ||
     (err as { status?: number; statusCode?: number })?.statusCode;
 
@@ -148,11 +240,13 @@ function classifyError(err: unknown): {
 /**
  * Universal structured AI caller:
  * - Extracts JSON, strips markdown fences, validates with Zod.
+ * - Managed via global concurrency limiter & document-aware fair queue.
  * - Handles retries:
  *   - Up to 2 retries for AI_INVALID_OUTPUT (schema mismatch or malformed JSON).
+ *   - Up to 3 retries for AI_RATE_LIMIT (429) with exponential backoff, jitter, and circuit-breaker pause.
  *   - 1 retry for timeout / 5xx / unreachable network errors with 1s delay.
  *   - 0 retries for 4xx authentication errors.
- *   - Max 3 total attempts.
+ *   - Max 3 total attempts for model prompt corrections.
  * - Logs structured metrics without leaking user prompt content.
  */
 export async function generateJson<T extends z.ZodTypeAny>(
@@ -164,8 +258,11 @@ export async function generateJson<T extends z.ZodTypeAny>(
   const modelName = options.model || process.env.AI_MODEL || "gemini";
 
   const MAX_TOTAL_ATTEMPTS = 3;
+  const MAX_RATE_LIMIT_RETRIES = Number(process.env.AI_MAX_RATE_LIMIT_RETRIES) || 3;
+
   let attempt = 0;
   let networkRetryCount = 0;
+  let rateLimitRetryCount = 0;
 
   const messages: CoreMessage[] = [
     {
@@ -186,15 +283,26 @@ export async function generateJson<T extends z.ZodTypeAny>(
     const startTime = Date.now();
 
     try {
-      const response = await generateText({
-        model: client.chat(modelName),
-        system: options.system,
-        messages,
-        temperature: 0.3,
-        abortSignal: options.signal
-          ? AbortSignal.any([AbortSignal.timeout(timeoutMs), options.signal])
-          : AbortSignal.timeout(timeoutMs),
-      });
+      const callAi = () =>
+        generateText({
+          model: client.chat(modelName),
+          system: options.system,
+          messages,
+          temperature: 0.3,
+          maxRetries: 0,
+          abortSignal: options.signal
+            ? AbortSignal.any([AbortSignal.timeout(timeoutMs), options.signal])
+            : AbortSignal.timeout(timeoutMs),
+        });
+
+      // Route via global queue unless bypassQueue is specified
+      const response = options.bypassQueue
+        ? await callAi()
+        : await aiQueue.enqueue(callAi, {
+            docId: options.docId,
+            stage: options.stage,
+            signal: options.signal,
+          });
 
       const rawText = response.text;
       const durationMs = Date.now() - startTime;
@@ -320,13 +428,13 @@ export async function generateJson<T extends z.ZodTypeAny>(
 
       return validation.data;
     } catch (err: unknown) {
-    if (options.signal?.aborted) {
-      throw new AiError("AI_TIMEOUT", "Operasi AI dibatalkan oleh pengguna", {
-        stage: options.stage,
-        docId: options.docId,
-        sectionId: options.sectionId,
-      });
-    }
+      if (options.signal?.aborted) {
+        throw new AiError("AI_TIMEOUT", "Operasi AI dibatalkan oleh pengguna", {
+          stage: options.stage,
+          docId: options.docId,
+          sectionId: options.sectionId,
+        });
+      }
       if (err instanceof AiError) {
         throw err;
       }
@@ -360,6 +468,61 @@ export async function generateJson<T extends z.ZodTypeAny>(
         );
       }
 
+      // Specialized handling for Rate Limit (429) with exponential backoff & jitter
+      if (classification.code === "AI_RATE_LIMIT") {
+        if (rateLimitRetryCount < MAX_RATE_LIMIT_RETRIES) {
+          const delayMs = calculateRateLimitDelayMs(rateLimitRetryCount, err);
+          rateLimitRetryCount++;
+
+          console.warn(
+            JSON.stringify({
+              requestId,
+              docId: options.docId,
+              stage: options.stage,
+              sectionId: options.sectionId,
+              attempt,
+              rateLimitRetryCount,
+              delayMs,
+              outcome: "retry",
+              reason: "AI_RATE_LIMIT",
+            })
+          );
+
+          // Inform global queue to pause outgoing requests for the duration
+          aiQueue.notifyRateLimit(delayMs);
+
+          // Decrement attempt counter so rate limit wait doesn't burn prompt attempts
+          attempt--;
+
+          await sleepWithSignal(delayMs, options.signal);
+          continue;
+        } else {
+          console.error(
+            JSON.stringify({
+              requestId,
+              docId: options.docId,
+              stage: options.stage,
+              sectionId: options.sectionId,
+              attempt,
+              rateLimitRetryCount,
+              durationMs,
+              outcome: "failure",
+              reason: "AI_RATE_LIMIT_EXHAUSTED",
+            })
+          );
+
+          throw new AiError(
+            "AI_RATE_LIMIT",
+            "Batas permintaan AI (Rate Limit / RPM) terlampaui. Gateway sedang sibuk, silakan coba beberapa saat lagi.",
+            {
+              stage: options.stage,
+              docId: options.docId,
+              sectionId: options.sectionId,
+            }
+          );
+        }
+      }
+
       // Check if we can do network/timeout retry (at most 1 retry with 1s delay)
       if (
         classification.retryable &&
@@ -381,7 +544,7 @@ export async function generateJson<T extends z.ZodTypeAny>(
         );
 
         // 1 second delay before network retry
-        await new Promise((resolve) => setTimeout(resolve, 1000));
+        await sleepWithSignal(1000, options.signal);
         continue;
       }
 

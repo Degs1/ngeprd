@@ -14,6 +14,12 @@ const serverEnvSchema = z.object({
   AI_MODEL: z.string().optional().default("ag/gemini-3.8-flash-high"),
   AI_TIMEOUT_MS: z.coerce.number().optional().default(45000),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
+  // Auth.js & Quota Configuration
+  AUTH_SECRET: z.string().optional().default("ngeprd_default_session_secret_change_in_production_32chars"),
+  AUTH_GOOGLE_ID: z.string().optional().default(""),
+  AUTH_GOOGLE_SECRET: z.string().optional().default(""),
+  ADMIN_EMAILS: z.string().optional().default(""),
+  DAILY_PRD_LIMIT: z.coerce.number().optional().default(3),
 });
 
 export type ServerEnv = z.infer<typeof serverEnvSchema>;
@@ -43,5 +49,20 @@ export const env = {
   },
   get MONGODB_DB() {
     return getServerEnv().MONGODB_DB;
+  },
+  get AUTH_SECRET() {
+    return getServerEnv().AUTH_SECRET;
+  },
+  get AUTH_GOOGLE_ID() {
+    return getServerEnv().AUTH_GOOGLE_ID;
+  },
+  get AUTH_GOOGLE_SECRET() {
+    return getServerEnv().AUTH_GOOGLE_SECRET;
+  },
+  get ADMIN_EMAILS() {
+    return getServerEnv().ADMIN_EMAILS;
+  },
+  get DAILY_PRD_LIMIT() {
+    return getServerEnv().DAILY_PRD_LIMIT;
   },
 };

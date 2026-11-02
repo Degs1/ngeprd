@@ -10,7 +10,6 @@ import {
   X,
   FileText,
   Search,
-  Sparkles,
 } from "lucide-react";
 import { usePrdStore, type PrdListItem } from "@/store/usePrdStore";
 import StatusChip from "./StatusChip";
@@ -207,25 +206,27 @@ export default function PrdList() {
                       }}
                       autoFocus
                       disabled={isRenaming}
-                      className="w-full px-2 py-1 text-xs border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                      className="w-full px-2 py-1.5 text-xs border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
                     />
                     <button
                       type="button"
                       onClick={handleSaveRename}
                       disabled={isRenaming || !editTitle.trim()}
-                      className="p-1 rounded text-emerald-600 hover:bg-emerald-50 disabled:opacity-50"
+                      className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 disabled:opacity-50"
                       title="Simpan"
+                      aria-label="Simpan judul"
                     >
-                      <Check className="w-3.5 h-3.5" />
+                      <Check className="w-4 h-4" />
                     </button>
                     <button
                       type="button"
                       onClick={handleCancelRename}
                       disabled={isRenaming}
-                      className="p-1 rounded text-slate-400 hover:bg-slate-200"
+                      className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-200 active:bg-slate-300"
                       title="Batal"
+                      aria-label="Batal ubah judul"
                     >
-                      <X className="w-3.5 h-3.5" />
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ) : (
@@ -233,7 +234,7 @@ export default function PrdList() {
                     <Link
                       href={`/prd/${item._id}`}
                       onClick={() => setSidebarOpenMobile(false)}
-                      className="flex-1 min-w-0 pr-2"
+                      className="flex-1 min-w-0 pr-2 py-0.5"
                     >
                       <div className="flex items-center gap-1.5">
                         <span className="truncate text-xs text-slate-800 font-medium">
@@ -245,21 +246,23 @@ export default function PrdList() {
                       </div>
                     </Link>
 
-                    {/* Actions on hover */}
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    {/* Actions: visible on mobile touch, reveal on desktop hover */}
+                    <div className="flex items-center gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-within:opacity-100 transition-opacity shrink-0">
                       <button
                         type="button"
                         onClick={(e) => handleStartRename(e, item)}
-                        className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 transition-colors"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 active:bg-slate-200 transition-colors"
                         title="Ganti nama"
+                        aria-label={`Ganti nama ${item.title}`}
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
                       <button
                         type="button"
                         onClick={(e) => handleStartDelete(e, item)}
-                        className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:bg-rose-100 transition-colors"
                         title="Hapus PRD"
+                        aria-label={`Hapus ${item.title}`}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>

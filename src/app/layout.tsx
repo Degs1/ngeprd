@@ -1,6 +1,7 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import AuthProvider from "@/components/auth/AuthProvider";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -18,17 +19,24 @@ export const metadata: Metadata = {
   description: "Ubah ide mentah menjadi rencana arsitektur dan dokumen prd.md siap eksekusi",
 };
 
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#4f46e5",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="scroll-smooth">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased m-0 p-0 h-screen w-screen overflow-hidden`}
+        className={`${geistSans.variable} ${geistMono.variable} font-sans antialiased m-0 p-0 min-h-screen min-h-[100dvh] w-full overflow-x-clip bg-white text-[#20242C]`}
       >
-        {children}
+        <AuthProvider>{children}</AuthProvider>
       </body>
     </html>
   );

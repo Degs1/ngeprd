@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerId } from "@/lib/auth/owner";
+import { getAuthContext } from "@/lib/auth/owner";
 import {
   getPrdById,
   updatePrdTitle,
@@ -20,10 +20,11 @@ interface RouteParams {
  * GET /api/prds/[id]
  * Retrieves the full PRD document scoped by ownerId.
  */
-export async function GET(_req: NextRequest, { params }: RouteParams) {
+export async function GET(req: NextRequest, { params }: RouteParams) {
   try {
-    const ownerId = getOwnerId();
-    const prd = await getPrdById(params.id, ownerId);
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const prd = await getPrdById(params.id, authCtx.ownerId);
 
     if (!prd) {
       return NextResponse.json(
@@ -48,7 +49,8 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
  */
 export async function PATCH(req: NextRequest, { params }: RouteParams) {
   try {
-    const ownerId = getOwnerId();
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
     const body = await req.json().catch(() => null);
 
     const parsed = UpdatePrdTitleSchema.safeParse(body);
@@ -64,10 +66,10 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const updated = await updatePrdTitle(params.id, ownerId, parsed.data.title);
+    const updated = await updatePrdTitle(params.id, authCtx.ownerId, parsed.data.title);
     if (!updated) {
       return NextResponse.json(
-        { error: { code: "NOT_FOUND", message: "PRD document not found" } },
+        { error: { code: "NOT_FOUND", message: "PRD document not found or update failed" } },
         { status: 404 }
       );
     }
@@ -84,21 +86,22 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
 /**
  * DELETE /api/prds/[id]
- * Deletes the document and its associated changesets.
+ * Deletes the PRD document and cascades changesets.
  */
-export async function DELETE(_req: NextRequest, { params }: RouteParams) {
+export async function DELETE(req: NextRequest, { params }: RouteParams) {
   try {
-    const ownerId = getOwnerId();
-    const deleted = await deletePrd(params.id, ownerId);
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const success = await deletePrd(params.id, authCtx.ownerId);
 
-    if (!deleted) {
+    if (!success) {
       return NextResponse.json(
-        { error: { code: "NOT_FOUND", message: "PRD document not found" } },
+        { error: { code: "NOT_FOUND", message: "PRD document not found or could not be deleted" } },
         { status: 404 }
       );
     }
 
-    return new NextResponse(null, { status: 204 });
+    return NextResponse.json({ success: true, id: params.id });
   } catch (err) {
     console.error(`DELETE /api/prds/${params.id} failed:`, err);
     return NextResponse.json(

@@ -19,6 +19,7 @@ export interface BrainstormWizardProps {
   initialAnswers?: BrainstormAnswer[];
   onGeneratePrd?: () => void;
   onAnswersUpdated?: (answers: BrainstormAnswer[]) => void;
+  isGenerating?: boolean;
 }
 
 export default function BrainstormWizard({
@@ -28,6 +29,7 @@ export default function BrainstormWizard({
   initialAnswers = [],
   onGeneratePrd,
   onAnswersUpdated,
+  isGenerating: propIsGenerating,
 }: BrainstormWizardProps) {
   const [questions, setQuestions] = useState<BrainstormQuestion[]>(initialQuestions);
   const [answers, setAnswers] = useState<BrainstormAnswer[]>(initialAnswers);
@@ -42,7 +44,8 @@ export default function BrainstormWizard({
   );
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState<boolean>(false);
-  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [localIsGenerating, setLocalIsGenerating] = useState<boolean>(false);
+  const isGenerating = propIsGenerating !== undefined ? propIsGenerating : localIsGenerating;
 
   // Guard against concurrent fetching
   const isFetchingRef = useRef<boolean>(false);
@@ -302,7 +305,7 @@ export default function BrainstormWizard({
 
   const handleGeneratePrd = () => {
     flushPendingAnswer();
-    setIsGenerating(true);
+    setLocalIsGenerating(true);
     if (onGeneratePrd) {
       onGeneratePrd();
     }

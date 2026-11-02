@@ -1,5 +1,6 @@
 import { createOpenAI } from "@ai-sdk/openai";
 import { generateText, streamText } from "ai";
+import { aiQueue } from "./aiQueue";
 import {
   QuestionsResponseSchema,
   QuestionItemSchema,
@@ -11,9 +12,7 @@ import { getFallbackQuestions } from "./fallback";
 import {
   getPrdSystemPrompt,
   buildPrdPrompt,
-  normalizeAnswers,
 } from "./prdPrompt";
-import { generateFallbackPrd } from "./fallbackPrd";
 
 /**
  * Strips markdown code block wrappers (e.g. ```json ... ```) and leading/trailing whitespace.
@@ -111,6 +110,7 @@ export function getAiClient() {
 /**
  * Generates structured questions for a given project idea.
  * Validates output with Zod schema and falls back to mock questions if the AI proxy is unreachable.
+ * Concurrency & rate-limits are managed through aiQueue.
  */
 export async function generateQuestions(idea: string): Promise<QuestionItem[]> {
   const fallback = getFallbackQuestions(idea);
@@ -119,13 +119,17 @@ export async function generateQuestions(idea: string): Promise<QuestionItem[]> {
     const openai = getAiClient();
     const modelName = process.env.AI_MODEL || "gemini";
 
-    const { text } = await generateText({
-      model: openai.chat(modelName),
-      system: getQuestionsSystemPrompt(),
-      prompt: buildQuestionsPrompt(idea),
-      temperature: 0.3,
-      abortSignal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS) || 45000),
-    });
+    const { text } = await aiQueue.enqueue(
+      () =>
+        generateText({
+          model: openai.chat(modelName),
+          system: getQuestionsSystemPrompt(),
+          prompt: buildQuestionsPrompt(idea),
+          temperature: 0.3,
+          abortSignal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS) || 45000),
+        }),
+      { stage: "questions" }
+    );
 
     const cleanedJson = extractJsonFromText(text);
     const parsed = JSON.parse(cleanedJson);
@@ -167,47 +171,37 @@ export async function generateQuestions(idea: string): Promise<QuestionItem[]> {
 /**
  * Generates a complete Markdown PRD document with task breakdown.
  * Falls back to high-quality template synthesis if upstream AI fails.
+ * Concurrency & rate-limits are managed through aiQueue.
  */
 export async function generatePrd(
   idea: string,
   answersInput?: unknown
 ): Promise<string> {
-  const fallback = generateFallbackPrd(idea, answersInput);
+  const openai = getAiClient();
+  const modelName = process.env.AI_MODEL || "gemini";
 
-  try {
-    const openai = getAiClient();
-    const modelName = process.env.AI_MODEL || "gemini";
+  const { text } = await aiQueue.enqueue(
+    () =>
+      generateText({
+        model: openai.chat(modelName),
+        system: getPrdSystemPrompt(),
+        prompt: buildPrdPrompt(idea, answersInput),
+        temperature: 0.4,
+        abortSignal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS) || 45000),
+      }),
+    { stage: "legacy-prd" }
+  );
 
-    const { text } = await generateText({
-      model: openai.chat(modelName),
-      system: getPrdSystemPrompt(),
-      prompt: buildPrdPrompt(idea, answersInput),
-      temperature: 0.4,
-      abortSignal: AbortSignal.timeout(Number(process.env.AI_TIMEOUT_MS) || 45000),
-    });
+  const cleanedMarkdown = extractMarkdownFromText(text);
 
-    const cleanedMarkdown = extractMarkdownFromText(text);
-
-    // Basic validity check: must contain minimal PRD headings
-    if (
-      cleanedMarkdown.includes("#") &&
-      (cleanedMarkdown.includes("Ringkasan") || cleanedMarkdown.includes("Summary") || cleanedMarkdown.includes("Task"))
-    ) {
-      return cleanedMarkdown;
-    }
-
-    console.warn(
-      "[AI PRD] Generated text does not contain expected PRD headings, using fallback template:",
-      text.slice(0, 100)
-    );
-    return fallback;
-  } catch (err) {
-    console.warn(
-      "[AI PRD] Upstream AI failed or timed out, using fallback template:",
-      err instanceof Error ? err.message : String(err)
-    );
-    return fallback;
+  if (
+    cleanedMarkdown.includes("#") &&
+    (cleanedMarkdown.includes("Ringkasan") || cleanedMarkdown.includes("Summary") || cleanedMarkdown.includes("Task"))
+  ) {
+    return cleanedMarkdown;
   }
+
+  throw new Error("AI did not produce valid PRD format");
 }
 
 /**
