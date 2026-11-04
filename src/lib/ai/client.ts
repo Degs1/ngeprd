@@ -60,30 +60,73 @@ export function extractMarkdownFromText(raw: string): string {
   return text;
 }
 
+const UUID_REGEX =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export function isValidUuid(val: unknown): val is string {
+  return typeof val === "string" && UUID_REGEX.test(val);
+}
+
 /**
- * Custom fetch wrapper for 9router:
- * Ensures stream=false is sent on calls where stream is undefined (like generateText)
- * while preserving stream=true for streaming calls (like streamText).
+ * Custom fetch wrapper for AI Gateway / 9router:
+ * - Injects 'Idempotency-Key' header (RFC 4122 UUID) on every request if not already present or invalid.
+ * - Ensures stream=false is sent on calls where stream is undefined (like generateText)
+ *   while preserving stream=true for streaming calls (like streamText).
  */
-const customFetch = async (
+export const customFetch = async (
   input: RequestInfo | URL,
   init?: RequestInit
 ): Promise<Response> => {
-  if (init && init.body && typeof init.body === "string") {
+  const headersObj: Record<string, string> = {};
+  if (init?.headers) {
+    if (init.headers instanceof Headers) {
+      init.headers.forEach((val, key) => {
+        headersObj[key] = val;
+      });
+    } else if (Array.isArray(init.headers)) {
+      for (const [key, val] of init.headers) {
+        headersObj[key] = val;
+      }
+    } else {
+      Object.assign(headersObj, init.headers);
+    }
+  } else if (typeof input === "object" && "headers" in input && input.headers) {
+    if (input.headers instanceof Headers) {
+      input.headers.forEach((val, key) => {
+        headersObj[key] = val;
+      });
+    }
+  }
+
+  // Ensure 'Idempotency-Key' header is present and is a valid RFC 4122 UUID
+  const existingKey = Object.keys(headersObj).find(
+    (k) => k.toLowerCase() === "idempotency-key"
+  );
+  if (!existingKey || !isValidUuid(headersObj[existingKey])) {
+    if (existingKey) {
+      delete headersObj[existingKey];
+    }
+    headersObj["Idempotency-Key"] = crypto.randomUUID();
+  }
+
+  let body = init?.body;
+  if (body && typeof body === "string") {
     try {
-      const parsed = JSON.parse(init.body);
+      const parsed = JSON.parse(body);
       if (parsed.stream === undefined) {
         parsed.stream = false;
-        init = {
-          ...init,
-          body: JSON.stringify(parsed),
-        };
+        body = JSON.stringify(parsed);
       }
     } catch {
       // Body is not JSON, leave untouched
     }
   }
-  return fetch(input, init);
+
+  return fetch(input, {
+    ...init,
+    headers: headersObj,
+    body,
+  });
 };
 
 /**

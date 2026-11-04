@@ -533,3 +533,118 @@ test("BrainstormWizard - resume step calculation", () => {
     4
   );
 });
+
+
+test("AI Gateway - customFetch injects valid RFC 4122 UUID Idempotency-Key header on every request", async () => {
+  const { customFetch, isValidUuid } = await import("../src/lib/ai/client");
+  let capturedHeaders: Record<string, string> = {};
+
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async (_input, init) => {
+    capturedHeaders = (init?.headers || {}) as Record<string, string>;
+    return new Response(JSON.stringify({ ok: true }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  };
+
+  try {
+    // 1. Without initial Idempotency-Key -> auto generates RFC 4122 UUID
+    await customFetch("http://localhost:3001/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: "gemini-flash" }),
+    });
+
+    assert.ok(capturedHeaders["Idempotency-Key"]);
+    assert.equal(isValidUuid(capturedHeaders["Idempotency-Key"]), true);
+
+    // 2. With invalid non-UUID Idempotency-Key -> replaced with valid UUID
+    await customFetch("http://localhost:3001/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": "non-uuid-string-123",
+      },
+      body: JSON.stringify({ model: "gemini-flash" }),
+    });
+
+    assert.equal(isValidUuid(capturedHeaders["Idempotency-Key"]), true);
+    assert.notEqual(capturedHeaders["Idempotency-Key"], "non-uuid-string-123");
+
+    // 3. With valid RFC 4122 UUID -> preserves it
+    const validUuid = "f47ac10b-58cc-4372-a567-0e02b2c3d479";
+    await customFetch("http://localhost:3001/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Idempotency-Key": validUuid,
+      },
+      body: JSON.stringify({ model: "gemini-flash" }),
+    });
+
+    assert.equal(capturedHeaders["Idempotency-Key"], validUuid);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("generateJson - transmits valid UUID Idempotency-Key in AI requests", async () => {
+  const { isValidUuid } = await import("../src/lib/ai/client");
+  let capturedKey: string | undefined;
+
+  const mockFetch = async (_url: RequestInfo | URL, init?: RequestInit) => {
+    const headers = (init?.headers || {}) as Record<string, string>;
+    capturedKey = headers["idempotency-key"] || headers["Idempotency-Key"];
+    return new Response(
+      JSON.stringify({
+        id: "chatcmpl-test",
+        object: "chat.completion",
+        created: Date.now(),
+        model: "gemini",
+        choices: [
+          {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: "{\"result\": true}",
+            },
+            finish_reason: "stop",
+          },
+        ],
+      }),
+      { status: 200, headers: { "Content-Type": "application/json" } }
+    );
+  };
+
+  const mockClient = createOpenAI({
+    baseURL: "http://localhost:9999/v1",
+    apiKey: "test-key",
+    fetch: mockFetch,
+  });
+
+  // Test auto-generated UUID
+  await generateJson({
+    stage: "test-idempotency",
+    system: "sys",
+    user: "usr",
+    schema: z.object({ result: z.boolean() }),
+    client: mockClient,
+  });
+
+  assert.ok(capturedKey);
+  assert.equal(isValidUuid(capturedKey), true);
+
+  // Test custom valid UUID
+  const customUuid = "123e4567-e89b-42d3-a456-426614174000";
+  await generateJson({
+    stage: "test-idempotency",
+    system: "sys",
+    user: "usr",
+    schema: z.object({ result: z.boolean() }),
+    client: mockClient,
+    idempotencyKey: customUuid,
+  });
+
+  assert.equal(capturedKey, customUuid);
+});

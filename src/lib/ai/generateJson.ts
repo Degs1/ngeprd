@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { generateText, type CoreMessage } from "ai";
-import { getAiClient } from "./client";
+import { getAiClient, isValidUuid } from "./client";
 import { AiError, type AiErrorCode } from "./aiError";
 import { aiQueue } from "./aiQueue";
 
@@ -18,6 +18,7 @@ export interface GenerateJsonOptions<T extends z.ZodTypeAny> {
   model?: string;
   signal?: AbortSignal;
   bypassQueue?: boolean;
+  idempotencyKey?: string;
 }
 
 /**
@@ -283,6 +284,11 @@ export async function generateJson<T extends z.ZodTypeAny>(
     const startTime = Date.now();
 
     try {
+      const idempotencyKey =
+        options.idempotencyKey && isValidUuid(options.idempotencyKey)
+          ? options.idempotencyKey
+          : crypto.randomUUID();
+
       const callAi = () =>
         generateText({
           model: client.chat(modelName),
@@ -290,6 +296,9 @@ export async function generateJson<T extends z.ZodTypeAny>(
           messages,
           temperature: 0.3,
           maxRetries: 0,
+          headers: {
+            "Idempotency-Key": idempotencyKey,
+          },
           abortSignal: options.signal
             ? AbortSignal.any([AbortSignal.timeout(timeoutMs), options.signal])
             : AbortSignal.timeout(timeoutMs),

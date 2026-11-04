@@ -133,3 +133,15 @@ test("Owner Resolution - getOwnerId maintains backward compatibility", () => {
   const generated = getOwnerId();
   assert.ok(typeof generated === "string" && generated.length > 0);
 });
+
+test("Route Params Resolution - supports both promise and direct params object", async () => {
+  const directContext = { params: { id: "test-prd-123" } };
+  const promiseContext = { params: Promise.resolve({ id: "test-prd-123" }) };
+
+  const directRes = await Promise.resolve(directContext.params);
+  const promiseRes = await Promise.resolve(promiseContext.params);
+
+  assert.equal(directRes.id, "test-prd-123");
+  assert.equal(promiseRes.id, "test-prd-123");
+});
+

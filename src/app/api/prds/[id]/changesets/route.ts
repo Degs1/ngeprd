@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerId } from "@/lib/auth/owner";
+import { getAuthContext } from "@/lib/auth/owner";
 import { getPrdById } from "@/lib/db/prdRepository";
 import {
   createChangeSet,
@@ -15,30 +15,31 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }> | { id: string };
 }
 
 /**
  * GET /api/prds/[id]/changesets?sectionId=&status=
  * Retrieves changeset history for the PRD, optionally filtered by sectionId or status.
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export async function GET(req: NextRequest, context: RouteParams) {
+  const { id } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
     const { searchParams } = new URL(req.url);
     const sectionId = searchParams.get("sectionId") || undefined;
     const status = searchParams.get("status") || undefined;
 
-    const changesets = await getChangeSets(params.id, ownerId, {
+    const changesets = await getChangeSets(id, ownerId, {
       sectionId,
       status,
     });
 
     return NextResponse.json(changesets);
   } catch (err) {
-    console.error(`GET /api/prds/${params.id}/changesets failed:`, err);
+    console.error(`GET /api/prds/${id}/changesets failed:`, err);
     return NextResponse.json(
       { error: { code: "INTERNAL", message: "Failed to fetch changesets" } },
       { status: 500 }
@@ -61,9 +62,12 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  *
  * Enforces FR-AI-09: returns 409 CHANGESET_ACTIVE if an active changeset is already in progress.
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export async function POST(req: NextRequest, context: RouteParams) {
+  const { id } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
     const rawBody = await req.json().catch(() => null);
 
     const parsed = CreateChangeSetSchema.safeParse(rawBody);
@@ -82,7 +86,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     const { originSectionId, instruction } = parsed.data;
 
     // 1. Validate document exists
-    const prd = await getPrdById(params.id, ownerId);
+    const prd = await getPrdById(id, ownerId);
     if (!prd) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Dokumen PRD tidak ditemukan" } },
@@ -210,7 +214,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       headers: SSE_HEADERS,
     });
   } catch (err) {
-    console.error(`POST /api/prds/${params.id}/changesets failed:`, err);
+    console.error(`POST /api/prds/${id}/changesets failed:`, err);
     return NextResponse.json(
       { error: { code: "INTERNAL", message: "Failed to create changeset" } },
       { status: 500 }

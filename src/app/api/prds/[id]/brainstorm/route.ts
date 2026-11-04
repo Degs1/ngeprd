@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerId } from "@/lib/auth/owner";
+import { getAuthContext } from "@/lib/auth/owner";
 import { getPrdById, saveBrainstormQuestions } from "@/lib/db/prdRepository";
 import { runBrainstormer } from "@/lib/agent/brainstormer";
 import { AiError } from "@/lib/ai/generateJson";
@@ -8,9 +8,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }> | { id: string };
 }
 
 /**
@@ -21,11 +19,14 @@ interface RouteParams {
  *   saves them to the PRD document in MongoDB, and returns them.
  * - On AI failure, returns structured error (NO fallback templates).
  */
-export async function POST(_req: NextRequest, { params }: RouteParams) {
+export async function POST(req: NextRequest, context: RouteParams) {
+  const { id } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
-    const prd = await getPrdById(params.id, ownerId);
-
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
+    const prd = await getPrdById(id, ownerId);
+    
     if (!prd) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Dokumen PRD tidak ditemukan" } },
@@ -92,7 +93,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    console.error(`POST /api/prds/${params.id}/brainstorm failed:`, err);
+    console.error(`POST /api/prds/${id}/brainstorm failed:`, err);
     return NextResponse.json(
       {
         error: {

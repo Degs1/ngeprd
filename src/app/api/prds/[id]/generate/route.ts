@@ -20,9 +20,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }> | { id: string };
 }
 
 const GenerateRequestSchema = z.object({
@@ -44,7 +42,8 @@ const GenerateRequestSchema = z.object({
  * If the user navigates away or closes the tab, generation continues smoothly on the server.
  * Multiple PRDs can be generated simultaneously in parallel.
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export async function POST(req: NextRequest, context: RouteParams) {
+  const params = await Promise.resolve(context.params);
   let runId = "";
   let lockAcquired = false;
   let currentDocStatus = "generating";

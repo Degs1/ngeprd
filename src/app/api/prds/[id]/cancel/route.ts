@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerId } from "@/lib/auth/owner";
+import { getAuthContext } from "@/lib/auth/owner";
 import {
   getPrdById,
   releaseExecutionLock,
@@ -11,9 +11,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }> | { id: string };
 }
 
 /**
@@ -21,10 +19,12 @@ interface RouteParams {
  * Explicitly terminates an active generation background job, resets any 'writing'
  * sections back to 'pending', and releases the document execution lock.
  */
-export async function POST(_req: NextRequest, { params }: RouteParams) {
+export async function POST(req: NextRequest, context: RouteParams) {
+  const { id: prdId } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
-    const prdId = params.id;
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
 
     // 1. Cancel in server active job registry (signals AbortController)
     const cancelled = cancelJob(prdId, "Generasi dibatalkan oleh pengguna");
@@ -49,7 +49,7 @@ export async function POST(_req: NextRequest, { params }: RouteParams) {
         : "Tidak ada proses generasi aktif yang sedang berjalan.",
     });
   } catch (err) {
-    console.error(`POST /api/prds/${params.id}/cancel failed:`, err);
+    console.error(`POST /api/prds/${prdId}/cancel failed:`, err);
     return NextResponse.json(
       { error: { code: "INTERNAL", message: "Gagal membatalkan proses generasi" } },
       { status: 500 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerId } from "@/lib/auth/owner";
+import { getAuthContext } from "@/lib/auth/owner";
 import { updateSection, deleteSection } from "@/lib/db/prdRepository";
 import { UpdateSectionSchema } from "@/lib/schemas/prd";
 
@@ -7,10 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: {
-    id: string;
-    sectionId: string;
-  };
+  params: Promise<{ id: string; sectionId: string }> | { id: string; sectionId: string };
 }
 
 /**
@@ -18,9 +15,12 @@ interface RouteParams {
  * Updates section content with optimistic concurrency baseRev check.
  * Returns 409 REV_CONFLICT if baseRev is stale.
  */
-export async function PATCH(req: NextRequest, { params }: RouteParams) {
+export async function PATCH(req: NextRequest, context: RouteParams) {
+  const { id, sectionId } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
     const body = await req.json().catch(() => null);
 
     const parsed = UpdateSectionSchema.safeParse(body);
@@ -38,9 +38,9 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     const { baseRev, title, content, diagram } = parsed.data;
     const result = await updateSection(
-      params.id,
+      id,
       ownerId,
-      params.sectionId,
+      sectionId,
       baseRev,
       { title, content, diagram }
     );
@@ -57,7 +57,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
         {
           error: {
             code: "REV_CONFLICT",
-            message: `Section ${params.sectionId} has been modified (current rev: ${result.currentRev}, provided: ${baseRev})`,
+            message: `Section ${sectionId} has been modified (current rev: ${result.currentRev}, provided: ${baseRev})`,
             currentRev: result.currentRev,
           },
         },
@@ -68,7 +68,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
     return NextResponse.json({ rev: result.rev });
   } catch (err) {
     console.error(
-      `PATCH /api/prds/${params.id}/sections/${params.sectionId} failed:`,
+      `PATCH /api/prds/${id}/sections/${sectionId} failed:`,
       err
     );
     return NextResponse.json(
@@ -82,10 +82,13 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
  * DELETE /api/prds/[id]/sections/[sectionId]
  * Deletes section and any connected edges.
  */
-export async function DELETE(_req: NextRequest, { params }: RouteParams) {
+export async function DELETE(req: NextRequest, context: RouteParams) {
+  const { id, sectionId } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
-    const deleted = await deleteSection(params.id, ownerId, params.sectionId);
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
+    const deleted = await deleteSection(id, ownerId, sectionId);
 
     if (!deleted) {
       return NextResponse.json(
@@ -97,7 +100,7 @@ export async function DELETE(_req: NextRequest, { params }: RouteParams) {
     return new NextResponse(null, { status: 204 });
   } catch (err) {
     console.error(
-      `DELETE /api/prds/${params.id}/sections/${params.sectionId} failed:`,
+      `DELETE /api/prds/${id}/sections/${sectionId} failed:`,
       err
     );
     return NextResponse.json(

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerId } from "@/lib/auth/owner";
+import { getAuthContext } from "@/lib/auth/owner";
 import {
   getChangeSetById,
   updateChangeSet,
@@ -14,10 +14,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: {
-    id: string;
-    csId: string;
-  };
+  params: Promise<{ id: string; csId: string }> | { id: string; csId: string };
 }
 
 /**
@@ -25,12 +22,15 @@ interface RouteParams {
  * Retrieves details for a specific changeset (used for recovery after page refresh).
  * Automatically marks stale generating changesets (> 3 minutes) as failed.
  */
-export async function GET(_req: NextRequest, { params }: RouteParams) {
+export async function GET(req: NextRequest, context: RouteParams) {
+  const { id, csId } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
-    const cs = await getChangeSetById(params.csId, ownerId);
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
+    const cs = await getChangeSetById(csId, ownerId);
 
-    if (!cs || cs.docId.toString() !== params.id) {
+    if (!cs || cs.docId.toString() !== id) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Change set tidak ditemukan" } },
         { status: 404 }
@@ -56,7 +56,7 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(cs);
   } catch (err) {
-    console.error(`GET /api/prds/${params.id}/changesets/${params.csId} failed:`, err);
+    console.error(`GET /api/prds/${id}/changesets/${csId} failed:`, err);
     return NextResponse.json(
       { error: { code: "INTERNAL", message: "Failed to fetch changeset" } },
       { status: 500 }
@@ -71,9 +71,12 @@ export async function GET(_req: NextRequest, { params }: RouteParams) {
  * - { action: "reject" }: Marks pending changeset as rejected.
  * - { action: "revert" }: Atomic rollback of an applied changeset back to before state.
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export async function POST(req: NextRequest, context: RouteParams) {
+  const { id, csId } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
     const rawBody = await req.json().catch(() => null);
 
     const parsed = ChangeSetActionSchema.safeParse(rawBody);
@@ -90,9 +93,9 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
     }
 
     const actionData = parsed.data;
-    const cs = await getChangeSetById(params.csId, ownerId);
+    const cs = await getChangeSetById(csId, ownerId);
 
-    if (!cs || cs.docId.toString() !== params.id) {
+    if (!cs || cs.docId.toString() !== id) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Change set tidak ditemukan" } },
         { status: 404 }
@@ -170,7 +173,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
 
       // Execute atomic application in MongoDB
       const applyResult = await applyChangeSetAtomic(
-        params.id,
+        id,
         ownerId,
         cs,
         sectionIds
@@ -249,7 +252,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
         );
       }
 
-      const revertResult = await revertChangeSetAtomic(params.id, ownerId, cs);
+      const revertResult = await revertChangeSetAtomic(id, ownerId, cs);
       if (!revertResult.success) {
         return NextResponse.json(
           {
@@ -278,7 +281,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       { status: 400 }
     );
   } catch (err) {
-    console.error(`POST /api/prds/${params.id}/changesets/${params.csId} failed:`, err);
+    console.error(`POST /api/prds/${id}/changesets/${csId} failed:`, err);
     return NextResponse.json(
       { error: { code: "INTERNAL", message: "Failed to process changeset action" } },
       { status: 500 }

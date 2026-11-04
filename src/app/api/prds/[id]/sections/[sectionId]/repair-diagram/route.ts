@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerId } from "@/lib/auth/owner";
+import { getAuthContext } from "@/lib/auth/owner";
 import { getPrdById } from "@/lib/db/prdRepository";
 import {
   RepairDiagramInputSchema,
@@ -11,10 +11,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: {
-    id: string;
-    sectionId: string;
-  };
+  params: Promise<{ id: string; sectionId: string }> | { id: string; sectionId: string };
 }
 
 /**
@@ -22,9 +19,12 @@ interface RouteParams {
  * Repairs malformed Mermaid diagram syntax using the diagram repair agent.
  * Responds with { code: string }.
  */
-export async function POST(req: NextRequest, { params }: RouteParams) {
+export async function POST(req: NextRequest, context: RouteParams) {
+  const { id, sectionId } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
     const body = await req.json().catch(() => null);
 
     const parsed = RepairDiagramInputSchema.safeParse(body);
@@ -40,7 +40,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const doc = await getPrdById(params.id, ownerId);
+    const doc = await getPrdById(id, ownerId);
     if (!doc) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "PRD document not found" } },
@@ -48,7 +48,7 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const section = (doc.sections as Section[]).find((s) => s.id === params.sectionId);
+    const section = (doc.sections as Section[]).find((s) => s.id === sectionId);
     if (!section) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "Section not found" } },
@@ -60,14 +60,14 @@ export async function POST(req: NextRequest, { params }: RouteParams) {
       code: parsed.data.code,
       error: parsed.data.error,
       lang: doc.lang || "id",
-      docId: params.id,
-      sectionId: params.sectionId,
+      docId: id,
+      sectionId: sectionId,
     });
 
     return NextResponse.json({ code: repairedCode });
   } catch (err: unknown) {
     console.error(
-      `POST /api/prds/${params.id}/sections/${params.sectionId}/repair-diagram failed:`,
+      `POST /api/prds/${id}/sections/${sectionId}/repair-diagram failed:`,
       err
     );
 

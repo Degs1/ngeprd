@@ -11,20 +11,19 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }> | { id: string };
 }
 
 /**
  * GET /api/prds/[id]
  * Retrieves the full PRD document scoped by ownerId.
  */
-export async function GET(req: NextRequest, { params }: RouteParams) {
+export async function GET(req: NextRequest, context: RouteParams) {
+  const { id } = await Promise.resolve(context.params);
   try {
     const explicitId = req.headers.get("x-owner-id") || undefined;
     const authCtx = await getAuthContext(explicitId);
-    const prd = await getPrdById(params.id, authCtx.ownerId);
+    const prd = await getPrdById(id, authCtx.ownerId);
 
     if (!prd) {
       return NextResponse.json(
@@ -35,7 +34,7 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(prd);
   } catch (err) {
-    console.error(`GET /api/prds/${params.id} failed:`, err);
+    console.error(`GET /api/prds/${id} failed:`, err);
     return NextResponse.json(
       { error: { code: "INTERNAL", message: "Failed to retrieve PRD" } },
       { status: 500 }
@@ -47,7 +46,8 @@ export async function GET(req: NextRequest, { params }: RouteParams) {
  * PATCH /api/prds/[id]
  * Updates the document title and sets titleEdited: true.
  */
-export async function PATCH(req: NextRequest, { params }: RouteParams) {
+export async function PATCH(req: NextRequest, context: RouteParams) {
+  const { id } = await Promise.resolve(context.params);
   try {
     const explicitId = req.headers.get("x-owner-id") || undefined;
     const authCtx = await getAuthContext(explicitId);
@@ -66,7 +66,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const updated = await updatePrdTitle(params.id, authCtx.ownerId, parsed.data.title);
+    const updated = await updatePrdTitle(id, authCtx.ownerId, parsed.data.title);
     if (!updated) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "PRD document not found or update failed" } },
@@ -76,7 +76,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     return NextResponse.json(updated);
   } catch (err) {
-    console.error(`PATCH /api/prds/${params.id} failed:`, err);
+    console.error(`PATCH /api/prds/${id} failed:`, err);
     return NextResponse.json(
       { error: { code: "INTERNAL", message: "Failed to update PRD title" } },
       { status: 500 }
@@ -88,11 +88,12 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
  * DELETE /api/prds/[id]
  * Deletes the PRD document and cascades changesets.
  */
-export async function DELETE(req: NextRequest, { params }: RouteParams) {
+export async function DELETE(req: NextRequest, context: RouteParams) {
+  const { id } = await Promise.resolve(context.params);
   try {
     const explicitId = req.headers.get("x-owner-id") || undefined;
     const authCtx = await getAuthContext(explicitId);
-    const success = await deletePrd(params.id, authCtx.ownerId);
+    const success = await deletePrd(id, authCtx.ownerId);
 
     if (!success) {
       return NextResponse.json(
@@ -101,9 +102,9 @@ export async function DELETE(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    return NextResponse.json({ success: true, id: params.id });
+    return NextResponse.json({ success: true, id });
   } catch (err) {
-    console.error(`DELETE /api/prds/${params.id} failed:`, err);
+    console.error(`DELETE /api/prds/${id} failed:`, err);
     return NextResponse.json(
       { error: { code: "INTERNAL", message: "Failed to delete PRD" } },
       { status: 500 }

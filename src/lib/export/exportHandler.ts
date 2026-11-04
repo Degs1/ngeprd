@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerId as defaultGetOwnerId } from "@/lib/auth/owner";
+import { getAuthContext, getOwnerId as defaultGetOwnerId } from "@/lib/auth/owner";
 import { getPrdById as defaultGetPrdById } from "@/lib/db/prdRepository";
 import { docToMarkdown, generateSlug } from "@/lib/converter/docToMarkdown";
 import type { PrdDocument } from "@/lib/schemas/prd";
 
 export interface ExportPrdDeps {
-  getOwnerId?: () => string;
+  getOwnerId?: () => string | Promise<string>;
   getPrdById?: (id: string, ownerId: string) => Promise<PrdDocument | null>;
 }
 
@@ -46,10 +46,16 @@ export async function handleExportPrd(
       );
     }
 
-    const getOwner = deps?.getOwnerId || defaultGetOwnerId;
     const fetchPrd = deps?.getPrdById || defaultGetPrdById;
+    let ownerId: string;
+    if (deps?.getOwnerId) {
+      ownerId = await deps.getOwnerId();
+    } else {
+      const explicitId = req.headers.get("x-owner-id") || undefined;
+      const authCtx = await getAuthContext(explicitId);
+      ownerId = authCtx.ownerId;
+    }
 
-    const ownerId = getOwner();
     const prd = await fetchPrd(id, ownerId);
 
     if (!prd) {

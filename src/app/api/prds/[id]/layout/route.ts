@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerId } from "@/lib/auth/owner";
+import { getAuthContext } from "@/lib/auth/owner";
 import { updatePrdLayout } from "@/lib/db/prdRepository";
 import { UpdateLayoutSchema } from "@/lib/schemas/prd";
 
@@ -7,18 +7,19 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }> | { id: string };
 }
 
 /**
  * PATCH /api/prds/[id]/layout
  * Saves section positions without incrementing rev.
  */
-export async function PATCH(req: NextRequest, { params }: RouteParams) {
+export async function PATCH(req: NextRequest, context: RouteParams) {
+  const { id } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
     const body = await req.json().catch(() => null);
 
     const parsed = UpdateLayoutSchema.safeParse(body);
@@ -34,7 +35,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
       );
     }
 
-    const updated = await updatePrdLayout(params.id, ownerId, parsed.data.positions);
+    const updated = await updatePrdLayout(id, ownerId, parsed.data.positions);
     if (!updated) {
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "PRD document not found" } },
@@ -44,7 +45,7 @@ export async function PATCH(req: NextRequest, { params }: RouteParams) {
 
     return new NextResponse(null, { status: 204 });
   } catch (err) {
-    console.error(`PATCH /api/prds/${params.id}/layout failed:`, err);
+    console.error(`PATCH /api/prds/${id}/layout failed:`, err);
     return NextResponse.json(
       { error: { code: "INTERNAL", message: "Failed to update layout" } },
       { status: 500 }

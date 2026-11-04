@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getOwnerId } from "@/lib/auth/owner";
+import { getAuthContext } from "@/lib/auth/owner";
 import { upsertBrainstormAnswer } from "@/lib/db/prdRepository";
 import { BrainstormAnswerSchema } from "@/lib/schemas/prd";
 
@@ -7,9 +7,7 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 interface RouteParams {
-  params: {
-    id: string;
-  };
+  params: Promise<{ id: string }> | { id: string };
 }
 
 /**
@@ -17,9 +15,12 @@ interface RouteParams {
  * Upserts a brainstorm answer in prd.brainstorm.answers.
  * Persists immediately on question answer or text change.
  */
-export async function PUT(req: NextRequest, { params }: RouteParams) {
+export async function PUT(req: NextRequest, context: RouteParams) {
+  const { id } = await Promise.resolve(context.params);
   try {
-    const ownerId = getOwnerId();
+    const explicitId = req.headers.get("x-owner-id") || undefined;
+    const authCtx = await getAuthContext(explicitId);
+    const ownerId = authCtx.ownerId;
     const body = await req.json().catch(() => null);
 
     const validation = BrainstormAnswerSchema.safeParse(body);
@@ -38,7 +39,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
     }
 
     const updatedDoc = await upsertBrainstormAnswer(
-      params.id,
+      id,
       ownerId,
       validation.data
     );
@@ -61,7 +62,7 @@ export async function PUT(req: NextRequest, { params }: RouteParams) {
       answers: updatedDoc.brainstorm?.answers || [],
     });
   } catch (err: unknown) {
-    console.error(`PUT /api/prds/${params.id}/brainstorm/answers failed:`, err);
+    console.error(`PUT /api/prds/${id}/brainstorm/answers failed:`, err);
     return NextResponse.json(
       {
         error: {
