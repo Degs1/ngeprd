@@ -6,7 +6,6 @@ import { useSession } from "next-auth/react";
 import {
   ArrowUp,
   Loader2,
-  Sparkles,
   Lightbulb,
   AlertCircle,
   Shield,
@@ -17,9 +16,18 @@ import { useUserStore } from "@/store/useUserStore";
 import { cn } from "@/lib/utils";
 
 const SAMPLE_IDEAS = [
-  "Web marketplace jasa cuci sepatu berbasis lokasi dengan payment gateway dan pelacakan status pesanan real-time",
-  "Aplikasi POS kasir kafe offline-first untuk tablet dengan sinkronisasi cloud dan cetak struk bluetooth",
-  "SaaS manajemen kos & kontrakan dengan invoice otomatis via WhatsApp dan laporan laba-rugi",
+  {
+    tag: "MARKETPLACE",
+    text: "Web marketplace jasa cuci sepatu berbasis lokasi dengan payment gateway dan pelacakan status pesanan real-time",
+  },
+  {
+    tag: "POINT OF SALE",
+    text: "Aplikasi POS kasir kafe offline-first untuk tablet dengan sinkronisasi cloud dan cetak struk bluetooth",
+  },
+  {
+    tag: "MANAGEMENT SAAS",
+    text: "SaaS manajemen kos & kontrakan dengan invoice otomatis via WhatsApp dan laporan laba-rugi",
+  },
 ];
 
 export default function IdeaInput() {
@@ -97,50 +105,51 @@ export default function IdeaInput() {
     }
   };
 
-  const handleSelectSample = (sample: string) => {
-    setIdea(sample);
+  const handleSelectSample = (sampleText: string) => {
+    setIdea(sampleText);
     setError(null);
     textareaRef.current?.focus();
   };
 
   return (
-    <div className="w-full flex flex-col gap-4 text-left">
+    <div className="w-full flex flex-col gap-5 text-left">
       {/* Input container */}
       <div
         className={cn(
-          "relative rounded-2xl bg-white border shadow-md transition-all p-3.5 sm:p-4.5",
+          "relative rounded-2xl bg-[#121E19] border transition-all p-4 sm:p-5 shadow-xl",
           error
-            ? "border-rose-300 ring-2 ring-rose-100"
+            ? "border-[#442420] ring-1 ring-[#D48B80]"
             : isQuotaExhausted
-            ? "border-amber-300 bg-amber-50/20"
-            : "border-slate-200/80 focus-within:border-indigo-400 focus-within:ring-4 focus-within:ring-indigo-100/60"
+            ? "border-[#3D3520] bg-[#161c16]"
+            : "border-[#22352B] focus-within:border-[#355243]"
         )}
       >
-        {/* Top subtle quota / login pill: stacks gracefully on narrow mobile */}
-        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-1.5 pb-2.5 mb-2.5 border-b border-slate-100 text-[11px]">
-          <div className="flex items-center gap-1.5 text-slate-500">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
-            <span className="font-medium truncate">AI Product Requirement Document</span>
+        {/* Top subtle quota / login pill */}
+        <div className="flex flex-col xs:flex-row xs:items-center justify-between gap-2 pb-3 mb-3 border-b border-[#1F3028] text-[11px]">
+          <div className="flex items-center gap-1.5 text-[#8FA396]">
+            <span className="font-mono text-[11px] font-semibold tracking-wider text-[#8EA690] uppercase">
+              Spesifikasi PRD
+            </span>
           </div>
 
           <div className="shrink-0">
             {!isAuthenticated ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 font-medium">
-                <LogIn className="w-3 h-3" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#162720] border border-[#22352B] text-[#8FA396] font-mono text-[10px]">
+                <LogIn className="w-3 h-3 text-[#8EA690]" />
                 <span>Login diperlukan</span>
               </span>
             ) : quota?.isAdmin ? (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-50 text-amber-800 border border-amber-200 font-medium">
-                <Shield className="w-3 h-3 text-amber-600" />
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#262215] text-[#D4B36A] border border-[#3D3520] font-mono text-[10px] font-medium">
+                <Shield className="w-3 h-3 text-[#D4B36A]" />
                 <span>Admin • Unlimited PRD</span>
               </span>
             ) : (
               <span
                 className={cn(
-                  "inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-medium",
+                  "inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-mono text-[10px]",
                   isQuotaExhausted
-                    ? "bg-rose-50 text-rose-700 border border-rose-200"
-                    : "bg-indigo-50 text-indigo-700 border border-indigo-100"
+                    ? "bg-[#281816] text-[#D48B80] border border-[#442420]"
+                    : "bg-[#162720] text-[#8EA690] border border-[#243D31]"
                 )}
               >
                 <span>Sisa kuota: {quota?.remaining ?? 3} / {quota?.limit ?? 3} PRD hari ini</span>
@@ -164,16 +173,16 @@ export default function IdeaInput() {
               ? "Batas harian 3 PRD telah tercapai untuk hari ini. Silakan kembali lagi besok."
               : "Ceritakan ide proyek atau produkmu secara detail... (minimal 10 karakter)"
           }
-          className="w-full resize-none border-0 bg-transparent p-0 text-slate-800 placeholder-slate-400 text-sm sm:text-base focus:outline-none focus:ring-0 leading-relaxed disabled:opacity-60 min-h-[90px] sm:min-h-[110px]"
+          className="w-full resize-none border-0 bg-transparent p-0 text-[#EAF0EB] placeholder-[#586C61] text-sm sm:text-base focus:outline-none focus:ring-0 leading-relaxed disabled:opacity-60 min-h-[90px] sm:min-h-[110px]"
         />
 
         {/* Action bar below textarea */}
-        <div className="mt-3 pt-3 flex items-center justify-between gap-2 border-t border-slate-100 text-xs">
-          <div className="flex items-center gap-2 text-slate-400 min-w-0">
+        <div className="mt-3 pt-3 flex items-center justify-between gap-2 border-t border-[#1F3028] text-xs">
+          <div className="flex items-center gap-2 text-[#586C61] min-w-0">
             <span className="hidden sm:inline text-[11px]">
-              Tekan <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[10px] text-slate-600">Enter</kbd> untuk kirim, <kbd className="px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200 font-mono text-[10px] text-slate-600">Shift+Enter</kbd> baris baru
+              Tekan <kbd className="px-1.5 py-0.5 rounded bg-[#162720] border border-[#243D31] font-mono text-[10px] text-[#8FA396]">Enter</kbd> untuk kirim, <kbd className="px-1.5 py-0.5 rounded bg-[#162720] border border-[#243D31] font-mono text-[10px] text-[#8FA396]">Shift+Enter</kbd> baris baru
             </span>
-            <span className="sm:hidden text-[11px] text-slate-400">Min. 10 karakter</span>
+            <span className="sm:hidden text-[11px] text-[#586C61]">Min. 10 karakter</span>
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -181,10 +190,10 @@ export default function IdeaInput() {
               className={cn(
                 "text-xs transition-colors font-mono",
                 charCount === 0
-                  ? "text-slate-300"
+                  ? "text-[#586C61]"
                   : charCount < 10 || charCount > 2000
-                  ? "text-amber-600 font-medium"
-                  : "text-slate-400"
+                  ? "text-[#D4B36A] font-medium"
+                  : "text-[#8FA396]"
               )}
             >
               {charCount} / 2000
@@ -197,12 +206,12 @@ export default function IdeaInput() {
               className={cn(
                 "min-h-[38px] py-2 px-3.5 rounded-xl flex items-center justify-center gap-2 text-xs font-semibold transition-all shadow-xs",
                 !isAuthenticated
-                  ? "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer active:scale-95"
+                  ? "bg-[#8EA690] hover:bg-[#7D967F] text-[#0C1310] cursor-pointer active:scale-95"
                   : isQuotaExhausted
-                  ? "bg-slate-200 text-slate-400 cursor-not-allowed"
+                  ? "bg-[#192A22] text-[#586C61] cursor-not-allowed"
                   : canSubmit
-                  ? "bg-indigo-600 hover:bg-indigo-700 text-white cursor-pointer active:scale-95"
-                  : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                  ? "bg-[#8EA690] hover:bg-[#7D967F] text-[#0C1310] cursor-pointer active:scale-95"
+                  : "bg-[#192A22] text-[#586C61] cursor-not-allowed"
               )}
               title={
                 !isAuthenticated
@@ -217,7 +226,7 @@ export default function IdeaInput() {
               }
             >
               {isSubmitting ? (
-                <Loader2 className="w-4 h-4 animate-spin text-white" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#0C1310]" />
               ) : !isAuthenticated ? (
                 <>
                   <LogIn className="w-3.5 h-3.5" />
@@ -236,7 +245,7 @@ export default function IdeaInput() {
 
       {/* Error alert */}
       {error && (
-        <div className="flex items-center gap-2 p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl">
+        <div className="flex items-center gap-2 p-3 text-xs text-[#D48B80] bg-[#281816] border border-[#442420] rounded-xl">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{error}</span>
         </div>
@@ -244,11 +253,11 @@ export default function IdeaInput() {
 
       {/* Quota Exhausted warning banner */}
       {isQuotaExhausted && (
-        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs">
-          <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+        <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-[#262215] border border-[#3D3520] text-[#D4B36A] text-xs">
+          <AlertCircle className="w-4 h-4 text-[#D4B36A] shrink-0 mt-0.5" />
           <div className="flex flex-col gap-0.5">
             <span className="font-semibold">Batas Kuota Harian Tercapai (3 / 3 PRD)</span>
-            <span className="text-amber-800 leading-relaxed">
+            <span className="text-[#8FA396] leading-relaxed">
               Pengguna gratis dibatasi 3 PRD per hari. Kuota Anda akan diperbarui kembali besok pukul 00:00, atau Anda dapat menghubungi admin.
             </span>
           </div>
@@ -256,26 +265,26 @@ export default function IdeaInput() {
       )}
 
       {/* Sample Ideas */}
-      <div className="flex flex-col gap-2 pt-1">
-        <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500">
-          <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
-          <span>Atau coba salah satu ide contoh ini:</span>
+      <div className="flex flex-col gap-2.5 pt-2">
+        <div className="flex items-center gap-1.5 text-xs font-medium text-[#8FA396]">
+          <Lightbulb className="w-3.5 h-3.5 text-[#8EA690]" />
+          <span>Contoh ide spesifikasi:</span>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {SAMPLE_IDEAS.map((sample, idx) => (
             <button
               key={idx}
               type="button"
               disabled={isSubmitting || isQuotaExhausted}
-              onClick={() => handleSelectSample(sample)}
-              className="text-left p-3.5 rounded-xl border border-slate-200/80 bg-white hover:bg-indigo-50/50 hover:border-indigo-200 active:bg-indigo-50 transition-all text-xs text-slate-700 hover:text-indigo-900 group shadow-2xs disabled:opacity-50 cursor-pointer"
+              onClick={() => handleSelectSample(sample.text)}
+              className="text-left p-3.5 rounded-xl border border-[#22352B] bg-[#121E19] hover:bg-[#162620] hover:border-[#355243] active:bg-[#1A2C24] transition-all text-xs text-[#8FA396] hover:text-[#EAF0EB] group shadow-2xs disabled:opacity-50 cursor-pointer flex flex-col gap-2"
             >
-              <div className="flex items-start gap-2.5">
-                <span className="w-5 h-5 rounded-md bg-slate-100 group-hover:bg-indigo-100 text-slate-500 group-hover:text-indigo-600 flex items-center justify-center text-[10px] font-bold shrink-0 mt-0.5">
-                  {idx + 1}
-                </span>
-                <span className="line-clamp-3 leading-relaxed">{sample}</span>
-              </div>
+              <span className="font-mono text-[10px] font-semibold text-[#8EA690] bg-[#162720] border border-[#243D31] px-2 py-0.5 rounded w-fit tracking-wider uppercase">
+                {sample.tag}
+              </span>
+              <span className="line-clamp-3 leading-relaxed text-[#8FA396] group-hover:text-[#EAF0EB] transition-colors">
+                {sample.text}
+              </span>
             </button>
           ))}
         </div>

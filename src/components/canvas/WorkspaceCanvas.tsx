@@ -52,7 +52,7 @@ export default function WorkspaceCanvas() {
   }, [selectNode]);
 
   return (
-    <div className="w-full h-full relative bg-slate-50">
+    <div className="w-full h-full relative bg-[#0C1310]">
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -68,30 +68,30 @@ export default function WorkspaceCanvas() {
         maxZoom={1.5}
         defaultEdgeOptions={{
           type: "smoothstep",
-          style: { strokeWidth: 2, stroke: "#94a3b8" },
+          style: { strokeWidth: 1.5, stroke: "#284234" },
         }}
       >
         <Background
           variant={BackgroundVariant.Dots}
-          gap={18}
+          gap={20}
           size={1}
-          color="#cbd5e1"
+          color="#1C2D24"
         />
         <Controls
-          className="bg-white border border-slate-200 shadow-sm rounded-xl overflow-hidden m-2 sm:m-4"
+          className="bg-[#121E19] border border-[#22352B] shadow-xl rounded-xl overflow-hidden m-2 sm:m-4 text-[#EAF0EB]"
           showInteractive={false}
         />
         <MiniMap
           nodeColor={(n) => {
-            if (n.id === "idea") return "#0f172a";
+            if (n.id === "idea") return "#8EA690";
             const status = (n.data as { status?: string })?.status;
-            if (status === "ready") return "#10b981";
-            if (status === "writing") return "#6366f1";
-            if (status === "failed") return "#ef4444";
-            return "#cbd5e1";
+            if (status === "ready") return "#3D5947";
+            if (status === "writing") return "#35516B";
+            if (status === "failed") return "#753A35";
+            return "#1C2E24";
           }}
-          className="hidden sm:block border border-slate-200 rounded-xl overflow-hidden shadow-xs"
-          maskColor="rgba(241, 245, 249, 0.7)"
+          className="hidden sm:block border border-[#22352B] rounded-xl overflow-hidden shadow-xs bg-[#101A16]"
+          maskColor="rgba(12, 19, 16, 0.75)"
         />
       </ReactFlow>
     </div>

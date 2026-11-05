@@ -4,13 +4,9 @@ import React, { useState } from "react";
 import {
   ChevronDown,
   ChevronRight,
-  Sparkles,
   AlertTriangle,
   Loader2,
-  CheckCircle2,
   AlertCircle,
-  Clock,
-  Layers,
 } from "lucide-react";
 import type { ClientChangeItem } from "@/store/useWorkspaceStore";
 import { DiffView } from "./DiffView";
@@ -40,7 +36,7 @@ export function ChangeItemCard({
   const isReady = item.status === "ready";
   const isFailed = item.status === "failed";
 
-  // Check if unselected and detected by term-match (triggers consistency warning per FR-AI-05)
+  // Check if unselected and detected by term-match
   const showConsistencyWarning = item.detectedBy === "term-match" && !isSelected;
 
   const titleBefore = item.before?.title;
@@ -53,17 +49,17 @@ export function ChangeItemCard({
   return (
     <div
       className={cn(
-        "rounded-2xl border transition-all duration-200 overflow-hidden bg-white shadow-2xs",
+        "rounded-2xl border transition-all duration-200 overflow-hidden bg-[#121E19] text-[#EAF0EB] shadow-xl",
         isOrigin
-          ? "border-purple-300 ring-1 ring-purple-200/70"
+          ? "border-[#8EA690] ring-1 ring-[#8EA690]"
           : isSelected
-          ? "border-slate-200/90 hover:border-slate-300"
-          : "border-slate-200/60 bg-slate-50/50 opacity-80"
+          ? "border-[#243C30]"
+          : "border-[#1F3028] opacity-75"
       )}
     >
       {/* Header bar */}
-      <div className="p-3 bg-white flex items-start gap-2.5">
-        {/* Checkbox (Origin is locked/disabled per FR-AI-05, failed items are disabled per Section 7.6) */}
+      <div className="p-3 bg-[#15231D] flex items-start gap-2.5 border-b border-[#1F3028]">
+        {/* Checkbox */}
         <div className="pt-0.5 shrink-0">
           <input
             type="checkbox"
@@ -72,11 +68,11 @@ export function ChangeItemCard({
             disabled={disabled || isOrigin || isFailed}
             onChange={() => onToggleSelect(item.sectionId)}
             className={cn(
-              "w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 transition-colors",
+              "w-4 h-4 rounded border-[#243C30] bg-[#0C1310] accent-[#8EA690] transition-colors",
               isOrigin
-                ? "cursor-not-allowed opacity-90 accent-purple-600"
+                ? "cursor-not-allowed opacity-90"
                 : isFailed
-                ? "cursor-not-allowed opacity-40 bg-slate-200"
+                ? "cursor-not-allowed opacity-40"
                 : "cursor-pointer"
             )}
             title={
@@ -94,35 +90,34 @@ export function ChangeItemCard({
           <div className="flex items-center gap-1.5 flex-wrap">
             {/* Section Number Pill */}
             {sectionNumber && (
-              <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">
+              <span className="font-mono text-xs font-bold text-[#8EA690] bg-[#162720] border border-[#243D31] px-1.5 py-0.5 rounded">
                 {sectionNumber}
               </span>
             )}
 
             {/* Section Title */}
-            <h4 className="text-xs font-bold text-slate-900 truncate">
+            <h4 className="text-xs font-serif font-bold text-[#EAF0EB] truncate">
               {titleAfter || titleBefore}
             </h4>
 
             {/* Role Badge: Origin vs Impacted */}
             {isOrigin ? (
-              <span className="text-[10px] font-semibold text-purple-700 bg-purple-50 border border-purple-200/70 px-1.5 py-0.2 rounded-full">
+              <span className="text-[10px] font-mono font-semibold text-[#8EA690] bg-[#162720] border border-[#243D31] px-1.5 py-0.2 rounded">
                 Origin
               </span>
             ) : (
-              <span className="text-[10px] font-semibold text-blue-700 bg-blue-50 border border-blue-200/70 px-1.5 py-0.2 rounded-full">
+              <span className="text-[10px] font-mono font-semibold text-[#8CB4D9] bg-[#18262F] border border-[#243B4D] px-1.5 py-0.2 rounded">
                 Terdampak
               </span>
             )}
 
             {/* Detection Badge */}
             {item.detectedBy === "origin" ? null : item.detectedBy === "ai" ? (
-              <span className="text-[10px] font-medium text-indigo-700 bg-indigo-50 border border-indigo-200/60 px-1.5 py-0.2 rounded-full flex items-center gap-1">
-                <Sparkles className="w-2.5 h-2.5" />
-                <span>AI</span>
+              <span className="text-[10px] font-mono text-[#8EA690] bg-[#162720] border border-[#243D31] px-1.5 py-0.2 rounded">
+                AI
               </span>
             ) : (
-              <span className="text-[10px] font-medium text-amber-800 bg-amber-50 border border-amber-200 px-1.5 py-0.2 rounded-full">
+              <span className="text-[10px] font-mono text-[#D4B36A] bg-[#262215] border border-[#3D3520] px-1.5 py-0.2 rounded">
                 Term-Match
               </span>
             )}
@@ -130,13 +125,13 @@ export function ChangeItemCard({
             {/* Processing status badge */}
             <div className="ml-auto shrink-0 flex items-center gap-1">
               {isGenerating && (
-                <span className="flex items-center gap-1 text-[11px] text-indigo-600 font-medium">
+                <span className="flex items-center gap-1 text-[11px] font-mono text-[#8CB4D9]">
                   <Loader2 className="w-3 h-3 animate-spin" />
                   <span>Menyusun...</span>
                 </span>
               )}
               {isFailed && (
-                <span className="flex items-center gap-1 text-[11px] text-rose-600 font-medium">
+                <span className="flex items-center gap-1 text-[11px] font-mono text-[#D48B80]">
                   <AlertCircle className="w-3 h-3" />
                   <span>Gagal</span>
                 </span>
@@ -146,16 +141,16 @@ export function ChangeItemCard({
 
           {/* Reason text */}
           {item.reason && (
-            <p className="text-[11px] text-slate-500 mt-1 leading-normal line-clamp-2">
-              <span className="font-medium text-slate-600">Alasan: </span>
+            <p className="text-[11px] text-[#8FA396] mt-1 leading-normal line-clamp-2">
+              <span className="font-semibold text-[#EAF0EB]">Alasan: </span>
               {item.reason}
             </p>
           )}
 
-          {/* Consistency Warning Banner (FR-AI-05) */}
+          {/* Consistency Warning Banner */}
           {showConsistencyWarning && (
-            <div className="mt-2 text-xs text-amber-900 bg-amber-50/90 border border-amber-200 rounded-xl p-2.5 flex items-start gap-2 shadow-2xs">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="mt-2 text-xs text-[#D4B36A] bg-[#262215] border border-[#3D3520] rounded-xl p-2.5 flex items-start gap-2 shadow-2xs">
+              <AlertTriangle className="w-4 h-4 text-[#D4B36A] shrink-0 mt-0.5" />
               <p className="text-[11px] leading-tight">
                 <strong className="font-semibold">Potensi Inkonsistensi:</strong> Bagian ini
                 terdeteksi memuat istilah lama. Melewatinya dapat menyebabkan istilah usang
@@ -166,8 +161,8 @@ export function ChangeItemCard({
 
           {/* Error Message if failed */}
           {item.error && (
-            <div className="mt-2 text-xs text-rose-800 bg-rose-50 border border-rose-200 rounded-xl p-2 flex items-center gap-1.5">
-              <AlertCircle className="w-3.5 h-3.5 text-rose-600 shrink-0" />
+            <div className="mt-2 text-xs text-[#D48B80] bg-[#281816] border border-[#442420] rounded-xl p-2 flex items-center gap-1.5">
+              <AlertCircle className="w-3.5 h-3.5 text-[#D48B80] shrink-0" />
               <span className="text-[11px] font-medium">{item.error.message}</span>
             </div>
           )}
@@ -178,7 +173,7 @@ export function ChangeItemCard({
           <button
             type="button"
             onClick={() => setIsExpanded(!isExpanded)}
-            className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors shrink-0"
+            className="p-1 rounded-lg text-[#586C61] hover:text-[#EAF0EB] hover:bg-[#162620] transition-colors shrink-0 cursor-pointer"
             title={isExpanded ? "Sembunyikan diff" : "Tampilkan diff"}
           >
             {isExpanded ? (
@@ -192,7 +187,7 @@ export function ChangeItemCard({
 
       {/* Expandable Diff Viewer */}
       {isReady && isExpanded && (
-        <div className="px-3 pb-3 pt-0">
+        <div className="p-3 bg-[#101A16]">
           <DiffView
             beforeText={contentBefore}
             afterText={contentAfter}

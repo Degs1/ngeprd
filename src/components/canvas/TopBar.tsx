@@ -79,28 +79,27 @@ export default function TopBar({
       )}
     >
       {/* Brand & Project Info */}
-      <div className="pointer-events-auto flex items-center gap-2.5 px-3 py-1.5 bg-white/95 backdrop-blur-md rounded-xl shadow-xs border border-slate-200/80 transition-all hover:border-slate-300">
+      <div className="pointer-events-auto flex items-center gap-2.5 px-3 py-1.5 bg-[#101A16]/95 backdrop-blur-md rounded-xl shadow-xs border border-[#1F3028] transition-all hover:border-[#2D4539]">
         <Link href="/" className="flex items-center gap-2 group cursor-pointer" title="Kembali ke Dashboard">
           <div className="w-7 h-7 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src="/logo-icon.png"
+              src="/brand-icon.png"
               alt="ngePRD"
               className="w-7 h-7 object-contain"
             />
           </div>
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-1.5">
-              <span className="text-xs font-extrabold tracking-tight text-slate-900 leading-tight flex items-center">
-                <span className="text-sky-500">nge</span>
-                <span className="text-blue-700">PRD</span>
+              <span className="text-xs font-serif font-bold tracking-tight text-[#EAF0EB] leading-tight">
+                ngePRD
               </span>
-              <span className="text-[10px] font-medium px-1.5 py-0.2 bg-indigo-50 text-indigo-700 rounded border border-indigo-200/50">
-                v1.0
+              <span className="text-[10px] font-mono px-1.5 py-0.2 bg-[#14221C] text-[#8EA690] rounded border border-[#1F3028]">
+                v2.2
               </span>
             </div>
             <span
-              className="text-[10px] text-slate-500 font-medium truncate max-w-[140px] sm:max-w-[220px]"
+              className="text-[10px] text-[#8FA396] font-medium truncate max-w-[140px] sm:max-w-[220px]"
               title={activeIdea}
             >
               {activeIdea || "Visual Discovery Canvas"}

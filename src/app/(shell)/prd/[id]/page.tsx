@@ -6,7 +6,6 @@ import { useParams, useRouter } from "next/navigation";
 import { ReactFlowProvider } from "@xyflow/react";
 import {
   ArrowLeft,
-  Sparkles,
   Loader2,
   AlertCircle,
   RotateCcw,
@@ -16,7 +15,6 @@ import {
   LayoutGrid,
   Download,
   Square,
-  Play,
   BookOpen,
 } from "lucide-react";
 import StatusChip from "@/components/dashboard/StatusChip";
@@ -120,10 +118,10 @@ export default function PrdWorkspacePage() {
   // Loading view
   if (isLoading && !document) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-6 text-center text-slate-500">
-        <Loader2 className="w-8 h-8 text-indigo-600 animate-spin mb-4" />
-        <p className="text-sm font-medium text-slate-700">Memuat workspace PRD...</p>
-        <p className="text-xs text-slate-400 mt-1">Menyiapkan kanvas dan outline...</p>
+      <div className="h-full flex flex-col items-center justify-center p-6 text-center text-[#8FA396] bg-[#0C1310]">
+        <Loader2 className="w-8 h-8 text-[#8EA690] animate-spin mb-4" />
+        <p className="text-sm font-medium text-[#EAF0EB]">Memuat workspace PRD...</p>
+        <p className="text-xs text-[#586C61] mt-1">Menyiapkan kanvas dan outline...</p>
       </div>
     );
   }
@@ -131,25 +129,25 @@ export default function PrdWorkspacePage() {
   // Error / Not Found view
   if (error && !document) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto">
-        <div className="w-12 h-12 rounded-full bg-rose-100 flex items-center justify-center text-rose-600 mb-4">
+      <div className="h-full flex flex-col items-center justify-center p-6 text-center max-w-md mx-auto bg-[#0C1310] text-[#EAF0EB]">
+        <div className="w-12 h-12 rounded-full bg-[#281816] border border-[#442420] flex items-center justify-center text-[#D48B80] mb-4">
           <AlertCircle className="w-6 h-6" />
         </div>
-        <h2 className="text-lg font-bold text-slate-900">PRD Tidak Ditemukan</h2>
-        <p className="text-sm text-slate-500 mt-2">
+        <h2 className="text-lg font-serif font-bold text-[#EAF0EB]">PRD Tidak Ditemukan</h2>
+        <p className="text-sm text-[#8FA396] mt-2">
           {error || "Dokumen PRD yang Anda cari tidak tersedia atau sudah dihapus."}
         </p>
         <div className="mt-6 flex items-center gap-3">
           <button
             type="button"
             onClick={() => loadPrd(id)}
-            className="px-4 py-2 text-xs font-medium text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors cursor-pointer"
+            className="px-4 py-2 text-xs font-medium text-[#8FA396] hover:text-[#EAF0EB] bg-[#162620] hover:bg-[#1D3028] border border-[#22352B] rounded-xl transition-colors cursor-pointer"
           >
             Coba Lagi
           </button>
           <Link
             href="/"
-            className="px-4 py-2 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors"
+            className="px-4 py-2 text-xs font-semibold text-[#0C1310] bg-[#8EA690] hover:bg-[#7D967F] rounded-xl transition-colors"
           >
             Kembali ke Dashboard
           </Link>
@@ -163,19 +161,19 @@ export default function PrdWorkspacePage() {
   // View 1: Brainstorming Wizard
   if (document.status === "brainstorming") {
     return (
-      <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
+      <div className="h-full flex flex-col bg-[#0C1310] overflow-hidden text-[#EAF0EB]">
         {/* TopBar */}
-        <header className="h-14 border-b border-slate-200 bg-white px-3 sm:px-6 flex items-center justify-between shrink-0 shadow-xs z-20">
+        <header className="h-14 border-b border-[#1F3028] bg-[#101A16] px-3 sm:px-6 flex items-center justify-between shrink-0 z-20">
           <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <Link
               href="/"
-              className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors shrink-0"
+              className="w-8 h-8 rounded-lg text-[#8FA396] hover:text-[#EAF0EB] hover:bg-[#162620] flex items-center justify-center transition-colors shrink-0"
               title="Kembali ke Dashboard"
               aria-label="Kembali ke Dashboard"
             >
               <ArrowLeft className="w-4 h-4" />
             </Link>
-            <h1 className="text-xs sm:text-base font-bold text-slate-900 truncate max-w-[150px] xs:max-w-xs sm:max-w-md">
+            <h1 className="text-xs sm:text-base font-serif font-bold text-[#EAF0EB] truncate max-w-[150px] xs:max-w-xs sm:max-w-md">
               {document.title}
             </h1>
             <StatusChip status="brainstorming" size="sm" />
@@ -216,14 +214,14 @@ export default function PrdWorkspacePage() {
   // View 2, 3, 4: Workspace Canvas with Outline Panel
   return (
     <ReactFlowProvider>
-      <div className="h-full flex flex-col bg-slate-50 overflow-hidden">
+      <div className="h-full flex flex-col bg-[#0C1310] overflow-hidden text-[#EAF0EB]">
         {/* TopBar */}
-        <header className="h-14 border-b border-slate-200 bg-white px-3 sm:px-5 flex items-center justify-between shrink-0 shadow-xs z-20 gap-2">
+        <header className="h-14 border-b border-[#1F3028] bg-[#101A16] px-3 sm:px-5 flex items-center justify-between shrink-0 z-20 gap-2">
           {/* Left Title & Status Area */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Link
               href="/"
-              className="w-8 h-8 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 flex items-center justify-center transition-colors shrink-0"
+              className="w-8 h-8 rounded-lg text-[#8FA396] hover:text-[#EAF0EB] hover:bg-[#162620] flex items-center justify-center transition-colors shrink-0"
               title="Kembali ke Dashboard"
               aria-label="Kembali ke Dashboard"
             >
@@ -246,13 +244,13 @@ export default function PrdWorkspacePage() {
                   }}
                   autoFocus
                   disabled={isSavingTitle}
-                  className="px-2 py-1 text-xs sm:text-sm font-semibold border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-300 bg-white w-28 xs:w-44 sm:w-60 md:w-72"
+                  className="px-2 py-1 text-xs sm:text-sm font-serif font-semibold border border-[#243C30] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8EA690] bg-[#0C1310] text-[#EAF0EB] w-28 xs:w-44 sm:w-60 md:w-72"
                 />
                 <button
                   type="button"
                   onClick={handleSaveTitle}
                   disabled={isSavingTitle || !editedTitle.trim()}
-                  className="p-1 text-emerald-600 hover:bg-emerald-50 rounded"
+                  className="p-1 text-[#8EA690] hover:bg-[#162620] rounded"
                   aria-label="Simpan judul"
                 >
                   <Check className="w-3.5 h-3.5" />
@@ -263,7 +261,7 @@ export default function PrdWorkspacePage() {
                     setIsEditingTitle(false);
                     setEditedTitle(document.title);
                   }}
-                  className="p-1 text-slate-400 hover:bg-slate-100 rounded"
+                  className="p-1 text-[#586C61] hover:text-[#8FA396] hover:bg-[#162620] rounded"
                   aria-label="Batal ubah judul"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -271,7 +269,7 @@ export default function PrdWorkspacePage() {
               </div>
             ) : (
               <div className="flex items-center gap-1.5 min-w-0 group">
-                <h1 className="text-xs sm:text-sm md:text-base font-bold text-slate-900 truncate max-w-[100px] xs:max-w-[160px] sm:max-w-xs md:max-w-md">
+                <h1 className="text-xs sm:text-sm md:text-base font-serif font-bold text-[#EAF0EB] truncate max-w-[100px] xs:max-w-[160px] sm:max-w-xs md:max-w-md">
                   {document.title}
                 </h1>
                 <button
@@ -280,7 +278,7 @@ export default function PrdWorkspacePage() {
                     setEditedTitle(document.title);
                     setIsEditingTitle(true);
                   }}
-                  className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-slate-400 hover:text-slate-600 rounded transition-opacity"
+                  className="opacity-70 sm:opacity-0 sm:group-hover:opacity-100 p-1 text-[#586C61] hover:text-[#EAF0EB] rounded transition-opacity"
                   title="Ganti judul"
                   aria-label="Ganti judul PRD"
                 >
@@ -294,12 +292,12 @@ export default function PrdWorkspacePage() {
             </div>
 
             {/* Section Progress Counter */}
-            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-slate-100 text-slate-700 text-xs font-semibold rounded-lg shrink-0">
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 py-1 bg-[#15231D] text-[#8EA690] border border-[#22352B] text-xs font-mono font-medium rounded-lg shrink-0">
               <span>
-                {stats.readySections}/{stats.totalSections} section
+                {stats.readySections}/{stats.totalSections} bagian
               </span>
               {isGenerating && (
-                <span className="w-2 h-2 rounded-full bg-indigo-600 animate-ping" />
+                <span className="w-2 h-2 rounded-full bg-[#8EA690] animate-ping" />
               )}
             </div>
           </div>
@@ -309,14 +307,14 @@ export default function PrdWorkspacePage() {
             {/* Generation In-Progress / Cancel Button */}
             {isGenerating ? (
               <div className="flex items-center gap-1.5">
-                <div className="hidden lg:flex items-center gap-2 text-xs text-indigo-700 bg-indigo-50 px-2.5 py-1.5 rounded-xl font-medium animate-pulse border border-indigo-200/60">
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-indigo-600" />
+                <div className="hidden lg:flex items-center gap-2 text-xs text-[#8CB4D9] bg-[#18262F] px-2.5 py-1.5 rounded-xl font-mono font-medium animate-pulse border border-[#243B4D]">
+                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#8CB4D9]" />
                   <span>Menulis dokumen...</span>
                 </div>
                 <button
                   type="button"
                   onClick={cancelGeneration}
-                  className="px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                  className="px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-[#D48B80] bg-[#281816] hover:bg-[#38201E] border border-[#442420] rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
                 >
                   <Square className="w-3 h-3 fill-current" />
                   <span className="hidden xs:inline">Batalkan</span>
@@ -328,7 +326,7 @@ export default function PrdWorkspacePage() {
                   type="button"
                   onClick={handleStartGeneration}
                   disabled={isGenerating}
-                  className="px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 border border-rose-200 rounded-xl transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+                  className="px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-[#D48B80] bg-[#281816] hover:bg-[#38201E] border border-[#442420] rounded-xl transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Lanjutkan</span>
@@ -336,32 +334,32 @@ export default function PrdWorkspacePage() {
               )
             )}
 
-            {/* Rapikan Layout (FR-CNV-07) */}
+            {/* Rapikan Layout (Dagre LR) */}
             <button
               type="button"
               onClick={relayout}
-              className="p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+              className="p-1.5 sm:px-2.5 sm:py-1.5 text-xs font-semibold text-[#8FA396] hover:text-[#EAF0EB] bg-[#15231D] hover:bg-[#1A2C24] border border-[#22352B] rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
               title="Rapikan tata letak otomatis (Dagre LR)"
               aria-label="Rapikan tata letak otomatis"
             >
-              <LayoutGrid className="w-3.5 h-3.5 text-slate-500" />
-              <span className="hidden sm:inline">Rapikan</span>
+              <LayoutGrid className="w-3.5 h-3.5 text-[#8FA396]" />
+              <span className="hidden sm:inline">Rapikan Layout</span>
             </button>
 
             {/* Outline & Revisi Toggle on Mobile (< 768px) */}
             <button
               type="button"
               onClick={() => setIsOutlineOpenMobile(true)}
-              className="md:hidden px-2 py-1.5 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-xl transition-colors flex items-center gap-1 relative cursor-pointer"
+              className="md:hidden px-2 py-1.5 text-xs font-semibold text-[#8FA396] bg-[#15231D] border border-[#22352B] rounded-xl transition-colors flex items-center gap-1 relative cursor-pointer"
               title="Buka Outline & Revisi"
               aria-label="Buka Outline dan Revisi"
             >
-              <BookOpen className="w-3.5 h-3.5 text-indigo-600" />
+              <BookOpen className="w-3.5 h-3.5 text-[#8EA690]" />
               <span className="hidden xs:inline">Outline</span>
               {pendingRevisionCount > 0 ? (
-                <span className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+                <span className="w-2 h-2 rounded-full bg-[#8EA690] animate-pulse" />
               ) : (
-                <span className="text-[10px] font-mono text-slate-500">
+                <span className="text-[10px] font-mono text-[#8FA396]">
                   {stats.readySections}/{stats.totalSections}
                 </span>
               )}
@@ -381,12 +379,12 @@ export default function PrdWorkspacePage() {
               className={cn(
                 "px-2.5 sm:px-3.5 py-1.5 text-xs font-semibold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer",
                 document.status === "ready"
-                  ? "text-white bg-indigo-600 hover:bg-indigo-700 active:scale-95"
-                  : "text-slate-400 bg-slate-100 cursor-not-allowed opacity-60"
+                  ? "text-[#0C1310] bg-[#8EA690] hover:bg-[#7D967F] active:scale-95"
+                  : "text-[#586C61] bg-[#192A22] border border-[#22352B] cursor-not-allowed opacity-60"
               )}
             >
               <Download className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Export</span>
+              <span className="hidden xs:inline">Ekspor</span>
               <span className="hidden sm:inline"> PRD</span>
             </button>
           </div>
@@ -394,9 +392,9 @@ export default function PrdWorkspacePage() {
 
         {/* Failure Banner if Document Failed */}
         {!isGenerating && document.status === "failed" && (
-          <div className="bg-rose-50 border-b border-rose-200 px-3 sm:px-4 py-2 flex items-center justify-between text-xs text-rose-800 shrink-0">
+          <div className="bg-[#281816] border-b border-[#442420] px-3 sm:px-4 py-2 flex items-center justify-between text-xs text-[#D48B80] shrink-0">
             <div className="flex items-center gap-2 min-w-0">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+              <AlertCircle className="w-4 h-4 text-[#D48B80] shrink-0" />
               <span className="truncate">
                 {document.lastError?.message ||
                   "Proses terhenti sebelum semua section selesai."}
@@ -406,7 +404,7 @@ export default function PrdWorkspacePage() {
               type="button"
               onClick={handleStartGeneration}
               disabled={isGenerating}
-              className="font-bold underline hover:text-rose-950 ml-3 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              className="font-bold underline hover:text-[#EAF0EB] ml-3 shrink-0 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               Coba Lagi
             </button>
@@ -440,7 +438,7 @@ export default function PrdWorkspacePage() {
           {/* Backdrop */}
           <div
             className={cn(
-              "fixed inset-0 bg-slate-900/40 backdrop-blur-xs transition-opacity duration-300 ease-in-out",
+              "fixed inset-0 bg-black/70 backdrop-blur-xs transition-opacity duration-300 ease-in-out",
               isOutlineOpenMobile ? "opacity-100" : "opacity-0"
             )}
             onClick={() => setIsOutlineOpenMobile(false)}
@@ -449,7 +447,7 @@ export default function PrdWorkspacePage() {
           {/* Drawer */}
           <div
             className={cn(
-              "relative ml-auto w-84 max-w-[88vw] h-full bg-white shadow-2xl z-50 flex flex-col transform transition-transform duration-300 cubic-bezier(0.16, 1, 0.3, 1)",
+              "relative ml-auto w-84 max-w-[88vw] h-full bg-[#101A16] border-l border-[#1F3028] shadow-2xl z-50 flex flex-col transform transition-transform duration-300 cubic-bezier(0.16, 1, 0.3, 1)",
               isOutlineOpenMobile ? "translate-x-0" : "translate-x-full"
             )}
           >

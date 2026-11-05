@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { signIn, useSession } from "next-auth/react";
 import {
-  Sparkles,
   ArrowLeft,
   CheckCircle2,
   Shield,
@@ -70,48 +69,48 @@ function LoginForm() {
   const isDev = process.env.NODE_ENV === "development";
 
   return (
-    <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200/80 shadow-xl shadow-slate-200/40 p-5 sm:p-8 flex flex-col gap-5 sm:gap-6">
+    <div className="w-full max-w-md bg-[#121E19] rounded-2xl border border-[#22352B] shadow-2xl p-5 sm:p-8 flex flex-col gap-5 sm:gap-6 text-[#EAF0EB]">
       {/* Brand header */}
       <div className="flex flex-col items-center text-center">
         <Link
           href="/"
-          className="group mb-2 hover:scale-105 transition-transform duration-200 cursor-pointer block"
+          className="group mb-2 hover:opacity-90 transition-opacity cursor-pointer block"
           title="Kembali ke Beranda"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/logo.png"
+            src="/brand-logo-cropped.png"
             alt="ngePRD"
-            className="h-16 w-auto object-contain drop-shadow-xs"
+            className="h-10 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
           />
         </Link>
         <span className="sr-only">ngePRD</span>
-        <p className="mt-1 text-xs text-slate-500 max-w-xs leading-relaxed">
+        <p className="mt-1 text-xs text-[#8FA396] max-w-xs leading-relaxed">
           Masuk dengan Google untuk mulai merancang PRD visual & diagram arsitektur.
         </p>
       </div>
 
       {/* Feature benefits */}
-      <div className="bg-slate-50 rounded-xl p-3.5 border border-slate-100 flex flex-col gap-2 text-xs text-slate-600">
+      <div className="bg-[#0C1310] rounded-xl p-3.5 border border-[#1F3028] flex flex-col gap-2 text-xs text-[#8FA396]">
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <CheckCircle2 className="w-4 h-4 text-[#8EA690] shrink-0" />
           <span>
-            <strong>3 PRD gratis</strong> setiap hari untuk semua akun
+            <strong className="text-[#EAF0EB]">3 PRD gratis</strong> setiap hari untuk semua akun
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+          <CheckCircle2 className="w-4 h-4 text-[#8EA690] shrink-0" />
           <span>Visual Flowchart & Mermaid Diagram otomatis</span>
         </div>
         <div className="flex items-center gap-2">
-          <CheckCircle2 className="w-4 h-4 text-indigo-600 shrink-0" />
+          <CheckCircle2 className="w-4 h-4 text-[#8EA690] shrink-0" />
           <span>Simpan riwayat & ekspor langsung ke Markdown</span>
         </div>
       </div>
 
       {/* Error message */}
       {errorMsg && (
-        <div className="p-3 text-xs text-rose-700 bg-rose-50 border border-rose-200 rounded-xl">
+        <div className="p-3 text-xs text-[#D48B80] bg-[#281816] border border-[#442420] rounded-xl">
           {errorMsg}
         </div>
       )}
@@ -122,10 +121,10 @@ function LoginForm() {
           type="button"
           disabled={isLoadingGoogle || isSubmittingDev}
           onClick={handleGoogleSignIn}
-          className="w-full flex items-center justify-center gap-3 py-3 px-4 min-h-[44px] rounded-xl border border-slate-200 bg-white hover:bg-slate-50/80 hover:border-slate-300 text-slate-700 text-sm font-semibold shadow-xs transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+          className="w-full flex items-center justify-center gap-3 py-3 px-4 min-h-[44px] rounded-xl bg-[#8EA690] hover:bg-[#7D967F] text-[#0C1310] text-sm font-semibold shadow-xs transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
         >
           {isLoadingGoogle ? (
-            <Loader2 className="w-5 h-5 animate-spin text-slate-500" />
+            <Loader2 className="w-5 h-5 animate-spin text-[#0C1310]" />
           ) : (
             <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
               <path
@@ -152,10 +151,10 @@ function LoginForm() {
 
       {/* Development fast tester options */}
       {isDev && (
-        <div className="pt-2 border-t border-slate-100 flex flex-col gap-2.5">
+        <div className="pt-2 border-t border-[#1F3028] flex flex-col gap-2.5">
           <div className="flex items-center gap-2">
-            <Zap className="w-3.5 h-3.5 text-amber-500" />
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
+            <Zap className="w-3.5 h-3.5 text-[#D4B36A]" />
+            <span className="text-[10px] font-mono font-semibold text-[#586C61] uppercase tracking-wider">
               Mode Uji Lokal (Dev Shortcuts)
             </span>
           </div>
@@ -165,10 +164,10 @@ function LoginForm() {
               type="button"
               disabled={isSubmittingDev}
               onClick={() => handleDevSignIn("free-user@example.com", "user")}
-              className="flex items-center justify-center gap-1.5 py-2.5 px-2.5 min-h-[40px] rounded-lg border border-slate-200 bg-slate-50 hover:bg-slate-100 active:bg-slate-200 text-[11px] font-medium text-slate-700 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 py-2.5 px-2.5 min-h-[40px] rounded-lg border border-[#243C30] bg-[#162620] hover:bg-[#1D3028] text-[11px] font-medium text-[#8FA396] hover:text-[#EAF0EB] transition-colors cursor-pointer"
               title="Login sebagai Pengguna Gratis (kuota 3 PRD/hari)"
             >
-              <User className="w-3.5 h-3.5 text-indigo-500" />
+              <User className="w-3.5 h-3.5 text-[#8EA690]" />
               <span>User (3/hari)</span>
             </button>
 
@@ -176,10 +175,10 @@ function LoginForm() {
               type="button"
               disabled={isSubmittingDev}
               onClick={() => handleDevSignIn("admin@example.com", "admin")}
-              className="flex items-center justify-center gap-1.5 py-2.5 px-2.5 min-h-[40px] rounded-lg border border-amber-200 bg-amber-50/50 hover:bg-amber-100/60 active:bg-amber-100 text-[11px] font-medium text-amber-900 transition-colors cursor-pointer"
+              className="flex items-center justify-center gap-1.5 py-2.5 px-2.5 min-h-[40px] rounded-lg border border-[#3D3520] bg-[#262215] hover:bg-[#332C1A] text-[11px] font-medium text-[#D4B36A] transition-colors cursor-pointer"
               title="Login sebagai Admin (Unlimited PRD)"
             >
-              <Shield className="w-3.5 h-3.5 text-amber-600" />
+              <Shield className="w-3.5 h-3.5 text-[#D4B36A]" />
               <span>Admin (Bypass)</span>
             </button>
           </div>
@@ -187,7 +186,7 @@ function LoginForm() {
       )}
 
       {/* Footnote */}
-      <p className="text-center text-[11px] text-slate-400">
+      <p className="text-center text-[11px] text-[#586C61]">
         Dengan masuk, Anda menyetujui ketentuan layanan dan kebijakan kuota harian ngePRD.
       </p>
     </div>
@@ -196,15 +195,12 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen min-h-[100dvh] w-screen flex flex-col items-center justify-center bg-slate-50 text-slate-900 px-3.5 sm:px-4 py-6 sm:py-8 relative overflow-y-auto">
-      {/* Decorative top blur glow */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[600px] max-w-full h-[300px] sm:h-[350px] bg-gradient-to-b from-indigo-100/70 to-transparent rounded-full blur-3xl pointer-events-none -z-10" />
-
+    <div className="min-h-screen min-h-[100dvh] w-screen flex flex-col items-center justify-center bg-[#0C1310] text-[#EAF0EB] px-3.5 sm:px-4 py-6 sm:py-8 relative overflow-y-auto">
       {/* Top back link */}
       <div className="w-full max-w-md mb-3 sm:mb-4 flex items-center justify-between">
         <Link
           href="/"
-          className="inline-flex items-center gap-2 text-xs font-medium text-slate-500 hover:text-indigo-600 transition-colors p-1"
+          className="inline-flex items-center gap-2 text-xs font-medium text-[#8FA396] hover:text-[#EAF0EB] transition-colors p-1"
         >
           <ArrowLeft className="w-4 h-4" />
           <span>Kembali ke Beranda</span>
@@ -213,8 +209,8 @@ export default function LoginPage() {
 
       <Suspense
         fallback={
-          <div className="w-full max-w-md bg-white rounded-2xl border border-slate-200/80 shadow-xl p-8 flex items-center justify-center">
-            <Loader2 className="w-6 h-6 animate-spin text-indigo-600" />
+          <div className="w-full max-w-md bg-[#121E19] rounded-2xl border border-[#22352B] shadow-xl p-8 flex items-center justify-center">
+            <Loader2 className="w-6 h-6 animate-spin text-[#8EA690]" />
           </div>
         }
       >

@@ -2,46 +2,52 @@
 
 import React from "react";
 import Link from "next/link";
-import { ArrowRight, LayoutDashboard, Sparkles } from "lucide-react";
+import { ArrowRight, Terminal } from "lucide-react";
 
 export default function CtaSection() {
   return (
-    <section className="w-full py-16 sm:py-24 bg-white border-b border-[#E1E5EC]">
+    <section className="w-full py-16 sm:py-24 bg-[#0C1310] border-b border-[#1F3028]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6">
-        <div className="p-8 sm:p-12 rounded-2xl bg-[#F5F7FA] border border-[#E1E5EC] text-center flex flex-col items-center shadow-xs">
-          <div className="w-12 h-12 rounded-xl bg-white border border-[#E1E5EC] flex items-center justify-center text-[#2854EB] mb-6 shadow-2xs">
-            <Sparkles className="w-6 h-6" />
+        <div className="p-8 sm:p-14 rounded-2xl bg-[#101A15] border border-[#1F3028] text-center flex flex-col items-center shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden">
+          {/* Subtle Accent Glow */}
+          <div
+            className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-24 bg-[#8EA690]/5 blur-3xl pointer-events-none"
+            aria-hidden="true"
+          />
+
+          <div className="inline-flex items-center gap-2 px-2.5 py-1 rounded border border-[#1F3028] bg-[#14221C] text-[#8EA690] text-xs font-mono tracking-wider mb-5">
+            <Terminal className="w-3.5 h-3.5" />
+            <span>MULAI SEKARANG</span>
           </div>
 
-          <h2 className="text-2xl sm:text-4xl font-extrabold text-[#20242C] tracking-tight max-w-xl leading-tight">
-            Siap Mengubah Ide Anda Menjadi Rencana Nyata?
+          <h2 className="font-serif text-2xl sm:text-4xl lg:text-5xl font-bold text-[#EAF0EB] tracking-tight max-w-xl leading-tight">
+            Ubah ide di kepala Anda menjadi arsitektur yang siap di-coding.
           </h2>
 
-          <p className="mt-3.5 text-sm sm:text-base text-[#596273] max-w-lg leading-relaxed">
-            Mulai eksplorasi ide produk hari ini. Jawab 4–6 pertanyaan arsitektur terarah dan biarkan AI merumuskan
-            spesifikasi lengkap dalam hitungan detik.
+          <p className="mt-4 text-sm sm:text-base text-[#8FA396] max-w-lg leading-relaxed font-sans">
+            Jawab 4–6 pertanyaan arsitektur interaktif dan biarkan agentic pipeline merumuskan spesifikasi lengkap dalam hitungan detik.
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row items-center gap-3.5 w-full sm:w-auto">
             <Link
               href="/dashboard"
-              className="w-full sm:w-auto px-7 py-3.5 rounded-lg bg-[#2854EB] hover:bg-[#1D44D8] text-white font-semibold text-sm sm:text-base tracking-tight shadow-sm transition-all duration-200 active:scale-98 flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-auto px-7 py-3 rounded-md bg-[#8EA690] hover:bg-[#7D967F] text-[#0C1310] font-sans font-semibold text-xs sm:text-sm tracking-tight transition-all duration-150 active:scale-95 flex items-center justify-center gap-2 cursor-pointer shadow-xs"
             >
-              <span>Buka Workspace Sekarang</span>
+              <span>Buka Workspace Gratis</span>
               <ArrowRight className="w-4 h-4" />
             </Link>
 
             <a
-              href="#preview"
-              className="w-full sm:w-auto px-6 py-3.5 rounded-lg bg-white hover:bg-slate-50 text-[#20242C] font-semibold text-sm sm:text-base border border-[#E1E5EC] transition-all duration-200 active:scale-98 flex items-center justify-center cursor-pointer"
+              href="#showcase"
+              className="w-full sm:w-auto px-6 py-3 rounded-md bg-[#14221C] hover:bg-[#1A2C24] text-[#EAF0EB] font-sans font-medium text-xs sm:text-sm border border-[#1F3028] transition-all duration-150 active:scale-95 flex items-center justify-center cursor-pointer"
             >
-              Lihat Contoh PRD
+              Lihat Live Preview
             </a>
           </div>
 
-          <p className="mt-4 text-[11px] text-[#596273]">
-            Tersimpan aman di MongoDB • Gratis untuk 3 PRD per hari
-          </p>
+          <div className="mt-6 text-[11px] font-mono text-[#5C7064]">
+            Tersimpan aman di MongoDB • Gratis 3 PRD per hari • Langsung kompatibel dengan Cursor &amp; Claude Code
+          </div>
         </div>
       </div>
     </section>

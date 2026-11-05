@@ -8,7 +8,7 @@ export default function LandingFooter() {
     e.preventDefault();
     const targetEl = document.getElementById(targetId);
     if (targetEl) {
-      const navOffset = 70;
+      const navOffset = 74;
       const elementPosition = targetEl.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.scrollY - navOffset;
 
@@ -18,80 +18,77 @@ export default function LandingFooter() {
       });
 
       window.history.pushState(null, "", `#${targetId}`);
-
-      window.dispatchEvent(
-        new CustomEvent("section-highlight", { detail: { id: targetId } })
-      );
     }
   };
 
   return (
-    <footer className="w-full bg-white py-12 px-4 sm:px-6">
-      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6 border-b border-[#E1E5EC] pb-8">
+    <footer className="w-full bg-[#080D0B] py-12 px-4 sm:px-6 border-t border-[#1F3028]">
+      <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-8 pb-8 border-b border-[#1F3028]">
         {/* Brand */}
         <div className="flex flex-col">
-          <Link href="/" className="flex items-center gap-2 group cursor-pointer mb-2">
-            <div className="w-7 h-7 rounded-lg flex items-center justify-center shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src="/logo-icon.png"
-                alt="ngePRD"
-                className="w-7 h-7 object-contain"
-              />
-            </div>
-            <span className="font-extrabold text-lg tracking-tight text-[#20242C] flex items-center">
-              <span className="text-sky-500">nge</span>
-              <span className="text-blue-700">PRD</span>
+          <Link href="/" className="flex items-center gap-3 group cursor-pointer mb-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/brand-logo-cropped.png"
+              alt="ngePRD"
+              className="h-7 w-auto object-contain transition-transform duration-200 group-hover:scale-105"
+            />
+            <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded border border-[#1F3028] bg-[#121D18] text-[#8EA690]">
+              v2.2
             </span>
           </Link>
-          <p className="text-xs text-[#596273] max-w-sm leading-relaxed">
-            AI Visual PRD Planner. Mengubah ide produk digital menjadi bab bernomor, canvas node & outline dua arah,
-            serta dokumen <code>prd.md</code> siap eksekusi.
+          <p className="text-xs text-[#8FA396] max-w-sm leading-relaxed font-sans">
+            Platform perencanaan spesifikasi perangkat lunak dengan multi-agent runtime, canvas node berarah, diagram Mermaid otomatis, dan ekspor <code className="font-mono text-[#C2D1C7]">prd.md</code> standar.
           </p>
         </div>
 
-        {/* Real Navigation Links */}
-        <div className="flex flex-wrap items-center gap-6 text-xs font-medium text-[#596273]">
+        {/* Navigation Anchors */}
+        <div className="flex flex-wrap items-center gap-6 text-xs font-mono text-[#8FA396]">
           <a
-            href="#alur-kerja"
-            onClick={(e) => handleAnchorClick(e, "alur-kerja")}
-            className="hover:text-[#20242C] transition-colors cursor-pointer"
+            href="#showcase"
+            onClick={(e) => handleAnchorClick(e, "showcase")}
+            className="hover:text-[#EAF0EB] transition-colors cursor-pointer"
           >
-            Alur Kerja
+            Live Canvas
           </a>
           <a
-            href="#preview"
-            onClick={(e) => handleAnchorClick(e, "preview")}
-            className="hover:text-[#20242C] transition-colors cursor-pointer"
+            href="#pipeline"
+            onClick={(e) => handleAnchorClick(e, "pipeline")}
+            className="hover:text-[#EAF0EB] transition-colors cursor-pointer"
           >
-            Preview PRD
+            Alur Pipeline
           </a>
           <a
             href="#fitur"
             onClick={(e) => handleAnchorClick(e, "fitur")}
-            className="hover:text-[#20242C] transition-colors cursor-pointer"
+            className="hover:text-[#EAF0EB] transition-colors cursor-pointer"
           >
-            Fitur Teknis
+            Spesifikasi Teknis
           </a>
           <a
-            href="#arsitektur"
-            onClick={(e) => handleAnchorClick(e, "arsitektur")}
-            className="hover:text-[#20242C] transition-colors cursor-pointer"
+            href="#specimen"
+            onClick={(e) => handleAnchorClick(e, "specimen")}
+            className="hover:text-[#EAF0EB] transition-colors cursor-pointer"
           >
-            Arsitektur
+            Spesimen prd.md
           </a>
-          <Link href="/dashboard" className="text-[#2854EB] font-semibold hover:underline cursor-pointer">
+          <Link
+            href="/dashboard"
+            className="text-[#8EA690] hover:text-[#EAF0EB] font-semibold transition-colors cursor-pointer"
+          >
             Buka Workspace
-          </Link>
-          <Link href="/login" className="hover:text-[#20242C] transition-colors cursor-pointer">
-            Masuk
           </Link>
         </div>
       </div>
 
-      <div className="max-w-6xl mx-auto mt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] text-[#596273]">
-        <p>© 2026 ngePRD. Dibuat untuk solo builder, vibe coder, & tim engineering.</p>
-        <p>Didukung oleh Next.js 14, Zustand, @xyflow/react, & MongoDB.</p>
+      {/* Taste-Skill Single Line Meta */}
+      <div className="max-w-6xl mx-auto pt-6 flex flex-col sm:flex-row items-center justify-between gap-3 text-[11px] font-mono text-[#5C7064]">
+        <div>
+          © {new Date().getFullYear()} ngePRD. Forest Editorial Specification Engine.
+        </div>
+        <div>
+          Built with Next.js 14, @xyflow/react &amp; MongoDB Atlas.
+        </div>
       </div>
     </footer>
   );

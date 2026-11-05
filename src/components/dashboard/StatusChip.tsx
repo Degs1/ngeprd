@@ -17,8 +17,8 @@ export default function StatusChip({ status, size = "sm", className }: StatusChi
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1 font-medium rounded-full border bg-amber-50 text-amber-700 border-amber-200",
-            size === "sm" ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2.5 py-1",
+            "inline-flex items-center gap-1 font-mono font-medium rounded-full border bg-[#262215] text-[#D4B36A] border-[#3D3520]",
+            size === "sm" ? "text-[10px] px-2 py-0.5" : "text-xs px-2.5 py-1",
             className
           )}
         >
@@ -31,8 +31,8 @@ export default function StatusChip({ status, size = "sm", className }: StatusChi
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1 font-medium rounded-full border bg-indigo-50 text-indigo-700 border-indigo-200",
-            size === "sm" ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2.5 py-1",
+            "inline-flex items-center gap-1 font-mono font-medium rounded-full border bg-[#18262F] text-[#8CB4D9] border-[#243B4D]",
+            size === "sm" ? "text-[10px] px-2 py-0.5" : "text-xs px-2.5 py-1",
             className
           )}
         >
@@ -45,8 +45,8 @@ export default function StatusChip({ status, size = "sm", className }: StatusChi
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1 font-medium rounded-full border bg-emerald-50 text-emerald-700 border-emerald-200",
-            size === "sm" ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2.5 py-1",
+            "inline-flex items-center gap-1 font-mono font-medium rounded-full border bg-[#152720] text-[#8EA690] border-[#243D31]",
+            size === "sm" ? "text-[10px] px-2 py-0.5" : "text-xs px-2.5 py-1",
             className
           )}
         >
@@ -59,8 +59,8 @@ export default function StatusChip({ status, size = "sm", className }: StatusChi
       return (
         <span
           className={cn(
-            "inline-flex items-center gap-1 font-medium rounded-full border bg-rose-50 text-rose-700 border-rose-200",
-            size === "sm" ? "text-[10px] px-1.5 py-0.5" : "text-xs px-2.5 py-1",
+            "inline-flex items-center gap-1 font-mono font-medium rounded-full border bg-[#281816] text-[#D48B80] border-[#442420]",
+            size === "sm" ? "text-[10px] px-2 py-0.5" : "text-xs px-2.5 py-1",
             className
           )}
         >

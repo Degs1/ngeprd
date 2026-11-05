@@ -2,11 +2,9 @@
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Sparkles,
   Loader2,
   AlertCircle,
   RotateCcw,
-  HelpCircle,
 } from "lucide-react";
 import type { BrainstormQuestion, BrainstormAnswer } from "@/lib/schemas/prd";
 import QuestionStep from "./QuestionStep";
@@ -47,18 +45,10 @@ export default function BrainstormWizard({
   const [localIsGenerating, setLocalIsGenerating] = useState<boolean>(false);
   const isGenerating = propIsGenerating !== undefined ? propIsGenerating : localIsGenerating;
 
-  // Guard against concurrent fetching
   const isFetchingRef = useRef<boolean>(false);
-
-  // Debounce timer for custom text inputs
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingAnswerRef = useRef<BrainstormAnswer | null>(null);
 
-  /**
-   * Computes the step index to resume from:
-   * Finds the first unanswered question index, or returns questions.length (Summary view)
-   * if all questions have already been answered.
-   */
   const computeResumeStep = useCallback(
     (qs: BrainstormQuestion[], ans: BrainstormAnswer[]): number => {
       if (!qs || qs.length === 0) return 0;
@@ -70,17 +60,13 @@ export default function BrainstormWizard({
       });
 
       if (firstUnansweredIndex === -1) {
-        return qs.length; // All questions answered, resume at summary
+        return qs.length;
       }
       return firstUnansweredIndex;
     },
     []
   );
 
-  /**
-   * Fetches or generates questions via POST /api/prds/[id]/brainstorm.
-   * Endpoint is idempotent: returns existing questions if already present in DB.
-   */
   const fetchQuestions = useCallback(async () => {
     if (isFetchingRef.current) return;
     isFetchingRef.current = true;
@@ -99,63 +85,78 @@ export default function BrainstormWizard({
         const errorCode = data?.error?.code || "AI_FAILED";
         const errorMsg =
           data?.error?.message ||
-          "Gagal memuat pertanyaan dari AI. Silakan coba lagi.";
-        throw { code: errorCode, message: errorMsg };
+          "Gagal merumuskan pertanyaan brainstorming. Silakan coba kembali.";
+        setError({ code: errorCode, message: errorMsg });
+        setIsLoadingQuestions(false);
+        isFetchingRef.current = false;
+        return;
       }
 
-      const loadedQuestions: BrainstormQuestion[] = data.questions || [];
-      setQuestions(loadedQuestions);
+      if (data?.data?.questions && Array.isArray(data.data.questions)) {
+        const fetchedQuestions: BrainstormQuestion[] = data.data.questions;
+        const fetchedAnswers: BrainstormAnswer[] = data.data.answers || [];
 
-      if (!hasInitializedStep) {
-        const resumeIndex = computeResumeStep(loadedQuestions, answers);
-        setCurrentStepIndex(resumeIndex);
-        setHasInitializedStep(true);
+        setQuestions(fetchedQuestions);
+        setAnswers(fetchedAnswers);
+
+        if (!hasInitializedStep) {
+          const step = computeResumeStep(fetchedQuestions, fetchedAnswers);
+          setCurrentStepIndex(step);
+          setHasInitializedStep(true);
+        }
       }
     } catch (err: unknown) {
-      const typedErr = err as { code?: string; message?: string };
-      setError({
-        code: typedErr?.code || "AI_FAILED",
-        message: typedErr?.message || "Gagal menghubungi layanan AI",
-      });
+      const msg =
+        err instanceof Error
+          ? err.message
+          : "Terjadi gangguan jaringan saat meminta pertanyaan.";
+      setError({ code: "NETWORK_ERROR", message: msg });
     } finally {
-      isFetchingRef.current = false;
       setIsLoadingQuestions(false);
+      isFetchingRef.current = false;
     }
-  }, [prdId, answers, hasInitializedStep, computeResumeStep]);
+  }, [prdId, hasInitializedStep, computeResumeStep]);
 
-  // Initial load
   useEffect(() => {
-    if (questions.length === 0) {
+    if (initialQuestions.length === 0) {
       fetchQuestions();
     } else if (!hasInitializedStep) {
-      const resumeIndex = computeResumeStep(questions, answers);
-      setCurrentStepIndex(resumeIndex);
+      const step = computeResumeStep(initialQuestions, initialAnswers);
+      setCurrentStepIndex(step);
       setHasInitializedStep(true);
     }
-  }, [fetchQuestions, questions, answers, hasInitializedStep, computeResumeStep]);
+  }, [fetchQuestions, initialQuestions, initialAnswers, hasInitializedStep, computeResumeStep]);
 
-  /**
-   * Sends the answer to the database via PUT /api/prds/[id]/brainstorm/answers.
-   */
   const persistAnswerToServer = useCallback(
     async (answerToSave: BrainstormAnswer) => {
       setIsSaving(true);
       setSaveError(null);
+
       try {
         const res = await fetch(`/api/prds/${prdId}/brainstorm/answers`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(answerToSave),
+          body: JSON.stringify({
+            questionId: answerToSave.questionId,
+            value: answerToSave.value,
+            isCustom: answerToSave.isCustom,
+            delegated: answerToSave.delegated,
+          }),
         });
 
+        const data = await res.json();
+
         if (!res.ok) {
-          const errData = await res.json().catch(() => null);
-          console.error("Gagal menyimpan jawaban:", errData);
-          setSaveError("Gagal menyimpan jawaban ke database.");
+          setSaveError(
+            data?.error?.message || "Gagal menyimpan jawaban ke database."
+          );
         }
-      } catch (err) {
-        console.error("Network error while saving answer:", err);
-        setSaveError("Koneksi terputus saat menyimpan jawaban.");
+      } catch (err: unknown) {
+        const msg =
+          err instanceof Error
+            ? err.message
+            : "Gangguan jaringan saat menyimpan jawaban.";
+        setSaveError(msg);
       } finally {
         setIsSaving(false);
       }
@@ -163,9 +164,6 @@ export default function BrainstormWizard({
     [prdId]
   );
 
-  /**
-   * Flushes any pending debounced answer immediately.
-   */
   const flushPendingAnswer = useCallback(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
@@ -177,21 +175,11 @@ export default function BrainstormWizard({
     }
   }, [persistAnswerToServer]);
 
-  /**
-   * Upserts the answer in local state and initiates server persistence.
-   */
   const saveAnswer = useCallback(
-    (newAnswer: BrainstormAnswer, debounce = false) => {
-      // Optimistic local update
+    (newAnswer: BrainstormAnswer, debounce: boolean = false) => {
       setAnswers((prev) => {
-        const index = prev.findIndex((a) => a.questionId === newAnswer.questionId);
-        let updated: BrainstormAnswer[];
-        if (index >= 0) {
-          updated = [...prev];
-          updated[index] = newAnswer;
-        } else {
-          updated = [...prev, newAnswer];
-        }
+        const filtered = prev.filter((a) => a.questionId !== newAnswer.questionId);
+        const updated = [...filtered, newAnswer];
         if (onAnswersUpdated) {
           onAnswersUpdated(updated);
         }
@@ -208,7 +196,7 @@ export default function BrainstormWizard({
             persistAnswerToServer(pendingAnswerRef.current);
             pendingAnswerRef.current = null;
           }
-        }, 400);
+        }, 800);
       } else {
         if (debounceTimerRef.current) {
           clearTimeout(debounceTimerRef.current);
@@ -218,19 +206,9 @@ export default function BrainstormWizard({
         persistAnswerToServer(newAnswer);
       }
     },
-    [persistAnswerToServer, onAnswersUpdated]
+    [onAnswersUpdated, persistAnswerToServer]
   );
 
-  // Clean up timer on unmount
-  useEffect(() => {
-    return () => {
-      if (debounceTimerRef.current) {
-        clearTimeout(debounceTimerRef.current);
-      }
-    };
-  }, []);
-
-  // Handler for selecting a pre-defined option
   const handleSelectOption = (option: string) => {
     const activeQuestion = questions[currentStepIndex];
     if (!activeQuestion) return;
@@ -246,7 +224,6 @@ export default function BrainstormWizard({
     );
   };
 
-  // Handler for custom text change
   const handleCustomTextChange = (text: string) => {
     const activeQuestion = questions[currentStepIndex];
     if (!activeQuestion) return;
@@ -262,7 +239,6 @@ export default function BrainstormWizard({
     );
   };
 
-  // Handler for delegating to AI
   const handleDelegateToAi = () => {
     const activeQuestion = questions[currentStepIndex];
     if (!activeQuestion) return;
@@ -311,25 +287,25 @@ export default function BrainstormWizard({
     }
   };
 
-  // 1. Loading View (Section 6.2 FR-BRN-01)
+  // 1. Loading View
   if (isLoadingQuestions) {
     return (
-      <div className="bg-white rounded-2xl border border-slate-200/80 shadow-sm p-8 md:p-12 text-center">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mx-auto mb-5 shadow-sm">
+      <div className="bg-[#121E19] rounded-2xl border border-[#22352B] shadow-xl p-8 md:p-12 text-center text-[#EAF0EB]">
+        <div className="w-12 h-12 rounded-2xl bg-[#162720] border border-[#243D31] flex items-center justify-center text-[#8EA690] mx-auto mb-5 shadow-xs">
           <Loader2 className="w-6 h-6 animate-spin" />
         </div>
-        <h2 className="text-lg md:text-xl font-bold text-slate-900">
+        <h2 className="text-lg md:text-xl font-serif font-bold text-[#EAF0EB]">
           AI Menyiapkan Pertanyaan...
         </h2>
-        <p className="text-sm text-slate-500 mt-2 max-w-md mx-auto leading-relaxed">
+        <p className="text-sm text-[#8FA396] mt-2 max-w-md mx-auto leading-relaxed">
           Menganalisis ide produk Anda untuk merumuskan 4–6 pertanyaan arsitektur dan kebutuhan spesifik domain.
         </p>
 
-        <div className="mt-6 p-4 rounded-xl bg-slate-50 border border-slate-200/60 max-w-lg mx-auto text-left">
-          <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">
+        <div className="mt-6 p-4 rounded-xl bg-[#0C1310] border border-[#1F3028] max-w-lg mx-auto text-left">
+          <div className="text-[10px] font-mono font-semibold text-[#8EA690] uppercase tracking-wider mb-1">
             Ide Anda:
           </div>
-          <p className="text-xs text-slate-700 line-clamp-3 leading-relaxed">
+          <p className="text-xs text-[#8FA396] line-clamp-3 leading-relaxed">
             {idea}
           </p>
         </div>
@@ -337,31 +313,28 @@ export default function BrainstormWizard({
     );
   }
 
-  // 2. Error View with "Coba lagi" (Section 6.2 FR-BRN-02)
+  // 2. Error View
   if (error) {
     return (
-      <div className="bg-white rounded-2xl border border-rose-200 shadow-sm p-6 md:p-8 text-center max-w-xl mx-auto">
-        <div className="w-12 h-12 rounded-2xl bg-rose-50 border border-rose-100 flex items-center justify-center text-rose-600 mx-auto mb-4">
+      <div className="bg-[#121E19] rounded-2xl border border-[#442420] shadow-xl p-6 md:p-8 text-center max-w-xl mx-auto text-[#EAF0EB]">
+        <div className="w-12 h-12 rounded-2xl bg-[#281816] border border-[#442420] flex items-center justify-center text-[#D48B80] mx-auto mb-4">
           <AlertCircle className="w-6 h-6" />
         </div>
-        <h2 className="text-lg font-bold text-rose-950">
+        <h2 className="text-lg font-serif font-bold text-[#D48B80]">
           Gagal Menyiapkan Pertanyaan
         </h2>
-        <div className="mt-2 inline-block px-2.5 py-0.5 rounded-full bg-rose-100 text-rose-800 text-xs font-mono font-semibold">
+        <div className="mt-2 inline-block px-2.5 py-0.5 rounded-full bg-[#281816] border border-[#442420] text-[#D48B80] text-xs font-mono font-semibold">
           {error.code}
         </div>
-        <p className="text-sm text-rose-700 mt-3 leading-relaxed">
+        <p className="text-sm text-[#8FA396] mt-3 leading-relaxed">
           {error.message}
-        </p>
-        <p className="text-xs text-slate-500 mt-2">
-          Sistem tidak menggunakan pertanyaan templat default. Silakan coba kembali untuk meminta AI merumuskan pertanyaan baru.
         </p>
 
         <div className="mt-6 flex items-center justify-center gap-3">
           <button
             type="button"
             onClick={fetchQuestions}
-            className="px-5 py-2.5 text-xs font-bold text-white bg-indigo-600 hover:bg-indigo-700 rounded-xl transition-colors flex items-center gap-2 shadow-sm"
+            className="px-5 py-2.5 text-xs font-semibold text-[#0C1310] bg-[#8EA690] hover:bg-[#7D967F] rounded-xl transition-colors flex items-center gap-2 shadow-xs cursor-pointer"
           >
             <RotateCcw className="w-4 h-4" />
             <span>Coba Lagi</span>
@@ -371,7 +344,7 @@ export default function BrainstormWizard({
     );
   }
 
-  // 3. Summary View (if currentStepIndex is questions.length)
+  // 3. Summary View
   if (currentStepIndex >= questions.length && questions.length > 0) {
     return (
       <AnswerSummary
@@ -409,9 +382,9 @@ export default function BrainstormWizard({
   return (
     <div className="space-y-4">
       {saveError && (
-        <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs flex items-center justify-between gap-3 shadow-xs">
+        <div className="p-3.5 rounded-xl bg-[#262215] border border-[#3D3520] text-[#D4B36A] text-xs flex items-center justify-between gap-3 shadow-xs">
           <div className="flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" />
             <span>{saveError}</span>
           </div>
           <button
@@ -422,7 +395,7 @@ export default function BrainstormWizard({
                 persistAnswerToServer(currentAnswer);
               }
             }}
-            className="font-semibold underline hover:text-amber-950 shrink-0"
+            className="font-semibold underline hover:text-[#EAF0EB] shrink-0"
           >
             Coba Simpan Ulang
           </button>

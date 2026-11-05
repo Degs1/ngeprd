@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useMemo, useState, useEffect, useRef } from "react";
+import React, { memo, useMemo, useState, useEffect, useRef, useCallback } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import {
   Clock,
@@ -8,14 +8,13 @@ import {
   CheckCircle2,
   AlertCircle,
   AlertTriangle,
-  Sparkles,
   Pencil,
   RotateCcw,
   Check,
-  X,
   RefreshCw,
   Layers,
   Code2,
+  MessageSquare,
 } from "lucide-react";
 import { marked } from "marked";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
@@ -39,21 +38,21 @@ export interface SectionNodeData {
 }
 
 const typeLabelMap: Record<string, { label: string; color: string }> = {
-  overview: { label: "Ringkasan", color: "bg-blue-50 text-blue-700 border-blue-200" },
-  problem: { label: "Masalah", color: "bg-amber-50 text-amber-700 border-amber-200" },
-  goals: { label: "Tujuan", color: "bg-emerald-50 text-emerald-700 border-emerald-200" },
-  users: { label: "Pengguna", color: "bg-indigo-50 text-indigo-700 border-indigo-200" },
-  features: { label: "Fitur", color: "bg-purple-50 text-purple-700 border-purple-200" },
-  flow: { label: "Alur", color: "bg-sky-50 text-sky-700 border-sky-200" },
-  architecture: { label: "Arsitektur", color: "bg-violet-50 text-violet-700 border-violet-200" },
-  data_model: { label: "Data Model", color: "bg-cyan-50 text-cyan-700 border-cyan-200" },
-  tech_stack: { label: "Tech Stack", color: "bg-fuchsia-50 text-fuchsia-700 border-fuchsia-200" },
-  api: { label: "API", color: "bg-teal-50 text-teal-700 border-teal-200" },
-  security: { label: "Keamanan", color: "bg-rose-50 text-rose-700 border-rose-200" },
-  nfr: { label: "NFR", color: "bg-slate-50 text-slate-700 border-slate-200" },
-  risks: { label: "Risiko", color: "bg-orange-50 text-orange-700 border-orange-200" },
-  roadmap: { label: "Roadmap", color: "bg-lime-50 text-lime-700 border-lime-200" },
-  custom: { label: "Kustom", color: "bg-gray-50 text-gray-700 border-gray-200" },
+  overview: { label: "Ringkasan", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  problem: { label: "Masalah", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  goals: { label: "Tujuan", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  users: { label: "Pengguna", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  features: { label: "Fitur", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  flow: { label: "Alur", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  architecture: { label: "Arsitektur", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  data_model: { label: "Data Model", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  tech_stack: { label: "Tech Stack", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  api: { label: "API", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  security: { label: "Keamanan", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  nfr: { label: "NFR", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  risks: { label: "Risiko", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  roadmap: { label: "Roadmap", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
+  custom: { label: "Kustom", color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]" },
 };
 
 function SectionNode({ id, data, selected }: NodeProps) {
@@ -73,14 +72,10 @@ function SectionNode({ id, data, selected }: NodeProps) {
     useWorkspaceStore((state) => state.sectionNumberMap.get(id)) ||
     nodeData.number ||
     "1.1";
-  const startGeneration = useWorkspaceStore((state) => state.startGeneration);
+  const startGeneration = useWorkspaceStore((state) => state.startGeneration);
   const isGenerating = useWorkspaceStore((state) => state.isGenerating);
   const selectNode = useWorkspaceStore((state) => state.selectNode);
   const saveSection = useWorkspaceStore((state) => state.saveSection);
-  const updateSectionInStore = useWorkspaceStore(
-    (state) => state.updateSectionInStore
-  );
-  const loadPrd = useWorkspaceStore((state) => state.loadPrd);
   const activeChangeSet = useWorkspaceStore((state) => state.activeChangeSet);
 
   const isRevisionActive =
@@ -105,7 +100,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
   const error = section.error || nodeData.error;
   const rev = section.rev || 1;
 
-  // Inline editing state (FR-EDT-01, FR-EDT-02, FR-EDT-03)
+  // Inline editing state
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(title);
   const [editContent, setEditContent] = useState(content);
@@ -151,7 +146,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
     }
   }, [title, content, diagram?.code, rev, isEditing]);
 
-  // Prevent editing on pending or writing sections (FR-EDT-04)
+  // Prevent editing on pending or writing sections
   useEffect(() => {
     if ((status === "pending" || status === "writing") && isEditing) {
       setIsEditing(false);
@@ -164,7 +159,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
 
   const typeMeta = typeLabelMap[type] || {
     label: type,
-    color: "bg-slate-50 text-slate-700 border-slate-200",
+    color: "bg-[#101A16] text-[#8FA396] border-[#1F3028]",
   };
 
   // Render markdown safely
@@ -215,7 +210,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
         setSaveState((prev) => (prev === "saved" ? "idle" : prev));
       }, 2500);
     } else if (result.conflict) {
-      // 409 Concurrency Conflict (FR-EDT-03)
+      // 409 Concurrency Conflict
       setSaveState("conflict");
       setConflictRev(result.currentRev ?? null);
     } else {
@@ -224,7 +219,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
     }
   };
 
-  // Schedule autosave with ~800ms debounce (FR-EDT-01)
+  // Schedule autosave with ~800ms debounce
   const scheduleAutosave = (
     newTitle: string,
     newContent: string,
@@ -258,95 +253,51 @@ function SectionNode({ id, data, selected }: NodeProps) {
     scheduleAutosave(editTitle, val, editDiagramCode);
   };
 
-  const handleDiagramCodeChange = (
-    e: React.ChangeEvent<HTMLTextAreaElement>
-  ) => {
+  const handleDiagramCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setEditDiagramCode(val);
     scheduleAutosave(editTitle, editContent, val);
   };
 
-  // Conflict Resolution: Muat ulang (Reload from server)
-  const handleConflictReload = async () => {
-    if (prdId) {
-      await loadPrd(prdId);
-    }
-    // Pull latest values from store section
-    const current = storeSection;
-    if (current) {
-      setEditTitle(current.title || "");
-      setEditContent(current.content || "");
-      setEditDiagramCode(current.diagram?.code || "");
-      setBaseRev(current.rev);
-    }
-    setSaveState("idle");
-    setConflictRev(null);
-  };
-
-  // Conflict Resolution: Timpa (Overwrite server version with current edits)
-  const handleConflictOverwrite = async () => {
-    const overwriteBaseRev = conflictRev ?? baseRev;
-    await performSave(
-      editTitle,
-      editContent,
-      editDiagramCode,
-      overwriteBaseRev
-    );
-  };
-
-  // Finish editing: flush any pending autosave and exit
   const handleFinishEditing = async () => {
     if (autosaveTimerRef.current) {
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
-      await performSave(
-        editTitle,
-        editContent,
-        editDiagramCode,
-        baseRev
-      );
     }
+    await performSave(editTitle, editContent, editDiagramCode, baseRev);
     setIsEditing(false);
   };
 
-  // MermaidView status update callback: persists status changes ('ok' / 'invalid' / auto-repaired code)
-  const handleDiagramStatusChange = async (
-    newStatus: "ok" | "invalid",
-    repairedCode?: string,
-    errorMsg?: string
-  ) => {
-    if (!diagram) return;
-
-    const codeToPersist = repairedCode || diagram.code;
-    const isUnchanged =
-      diagram.status === newStatus &&
-      codeToPersist === diagram.code &&
-      diagram.error === errorMsg;
-
-    if (isUnchanged) return;
-
-    const updatedDiagram: Diagram = {
-      kind: "mermaid",
-      code: codeToPersist,
-      status: newStatus,
-      error: errorMsg,
-    };
-
-    // Update store state immediately
-    updateSectionInStore(id, { diagram: updatedDiagram });
-
-    // Persist to database via PATCH
-    const result = await saveSection(id, rev, {
-      diagram: updatedDiagram,
-    });
-
-    if (result.success && result.rev !== undefined) {
-      setBaseRev(result.rev);
+  const handleConflictReload = async () => {
+    if (prdId) {
+      await useWorkspaceStore.getState().loadPrd(prdId);
+      setIsEditing(false);
+      setSaveState("idle");
     }
   };
 
-  const handleRetry = (e: any) => {
-    e.stopPropagation();
+  const handleConflictOverwrite = async () => {
+    if (conflictRev !== null) {
+      await performSave(editTitle, editContent, editDiagramCode, conflictRev);
+    }
+  };
+
+  const handleDiagramStatusChange = useCallback(
+    async (newStatus: "ok" | "invalid", repairedCode?: string) => {
+      if (repairedCode && repairedCode !== diagram?.code) {
+        await saveSection(id, baseRev, {
+          diagram: {
+            kind: "mermaid",
+            code: repairedCode,
+            status: newStatus,
+          },
+        });
+      }
+    },
+    [diagram?.code, id, baseRev, saveSection]
+  );
+
+  const handleRetry = () => {
     if (isGenerating) return;
     startGeneration([id]);
   };
@@ -357,462 +308,457 @@ function SectionNode({ id, data, selected }: NodeProps) {
     <div
       onClick={() => selectNode(id)}
       className={cn(
-        "relative rounded-2xl border bg-white shadow-sm w-[380px] select-none transition-all duration-200 flex flex-col",
+        "relative rounded-2xl border bg-[#121E19] text-[#EAF0EB] shadow-xl w-[400px] select-none transition-all duration-200 flex flex-col",
         selected
-          ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-slate-50 border-indigo-500 shadow-xl"
-          : "hover:shadow-md border-slate-200/90",
+          ? "ring-1 ring-[#8EA690] border-[#8EA690] shadow-2xl"
+          : "hover:border-[#355243] border-[#22352B]",
         isRevisionOrigin &&
-          "!border-purple-500 !ring-2 !ring-purple-400 !ring-offset-2 shadow-purple-100 shadow-xl",
+          "!border-[#8EA690] !ring-1 !ring-[#8EA690] shadow-2xl",
         isRevisionImpacted &&
-          "!border-amber-500 !ring-2 !ring-amber-400 !ring-offset-2 shadow-amber-100 shadow-xl",
+          "!border-[#D4B36A] !ring-1 !ring-[#D4B36A] shadow-2xl",
         status === "writing" &&
-          "border-indigo-400 shadow-indigo-100/50 shadow-lg",
-        status === "failed" && "border-rose-300 bg-rose-50/20",
-        isEditing && "ring-2 ring-indigo-400 border-indigo-400 shadow-md"
+          "border-[#243B4D] shadow-lg",
+        status === "failed" && "border-[#442420] bg-[#1a1212]",
+        isEditing && "ring-1 ring-[#8EA690] border-[#8EA690] shadow-2xl"
       )}
     >
       <div className="w-full rounded-2xl overflow-hidden flex flex-col flex-1">
         {/* Incoming Handle */}
-      <Handle
-        type="target"
-        position={Position.Left}
-        className="w-3.5 h-3.5 !bg-indigo-500 border-2 border-white rounded-full hover:!bg-indigo-600 transition-colors shadow-xs"
-      />
+        <Handle
+          type="target"
+          position={Position.Left}
+          className="w-3.5 h-3.5 !bg-[#8EA690] border-2 border-[#121E19] rounded-full hover:!bg-[#A0B8A2] transition-colors shadow-xs"
+        />
 
-      {/* Chapter Accent Stripe (FR-CNV-10) */}
-      <div className="h-1.5 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-indigo-600" />
+        {/* Header */}
+        <div className="p-4 pb-3 border-b border-[#1F3028] bg-[#15231D]">
+          <div className="flex items-center justify-between gap-2 mb-2">
+            <div className="flex items-center gap-1.5 min-w-0">
+              {/* Dynamic Section Number */}
+              <span className="font-mono font-bold text-xs bg-[#162720] text-[#8EA690] border border-[#243D31] px-2 py-0.5 rounded-md shrink-0">
+                {sectionNumber}
+              </span>
 
-      {/* Header */}
-      <div className="p-4 pb-3 border-b border-slate-100 bg-slate-50/50">
-        <div className="flex items-center justify-between gap-2 mb-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            {/* Dynamic Section Number */}
-            <span className="font-mono font-bold text-xs bg-indigo-100 text-indigo-800 px-2 py-0.5 rounded-md shrink-0">
-              {sectionNumber}
-            </span>
+              {/* Type Badge */}
+              <span
+                className={cn(
+                  "text-[10px] font-mono font-medium px-2 py-0.5 rounded border shrink-0 uppercase tracking-wider",
+                  typeMeta.color
+                )}
+              >
+                {typeMeta.label}
+              </span>
 
-            {/* Type Badge */}
-            <span
-              className={cn(
-                "text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 uppercase tracking-wide",
-                typeMeta.color
+              {/* Revision Role Badge */}
+              {isRevisionOrigin && (
+                <span className="text-[10px] font-mono font-semibold text-[#8EA690] bg-[#162720] border border-[#243D31] px-2 py-0.5 rounded shrink-0">
+                  Origin
+                </span>
               )}
-            >
-              {typeMeta.label}
-            </span>
+              {isRevisionImpacted && (
+                <span className="text-[10px] font-mono font-semibold text-[#D4B36A] bg-[#262215] border border-[#3D3520] px-2 py-0.5 rounded shrink-0">
+                  Revisi
+                </span>
+              )}
+            </div>
 
-            {/* Revision Role Badge (PRD 8.2) */}
-            {isRevisionOrigin && (
-              <span className="text-[10px] font-bold text-purple-700 bg-purple-100 border border-purple-200 px-1.5 py-0.5 rounded-full shrink-0 flex items-center gap-1">
-                <Sparkles className="w-2.5 h-2.5" />
-                <span>Origin</span>
-              </span>
-            )}
-            {isRevisionImpacted && (
-              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 border border-amber-300 px-1.5 py-0.5 rounded-full shrink-0">
-                ⟳ Terdampak
-              </span>
-            )}
+            {/* Status / Save Indicator */}
+            <div className="flex items-center gap-1 shrink-0">
+              {isEditing ? (
+                <div className="flex items-center gap-1">
+                  {saveState === "saving" && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#D4B36A] bg-[#262215] border border-[#3D3520] px-2 py-0.5 rounded-full animate-pulse">
+                      <Loader2 className="w-3 h-3 text-[#D4B36A] animate-spin" />
+                      <span>Menyimpan…</span>
+                    </span>
+                  )}
+                  {saveState === "saved" && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#8EA690] bg-[#162720] border border-[#243D31] px-2 py-0.5 rounded-full">
+                      <CheckCircle2 className="w-3 h-3 text-[#8EA690]" />
+                      <span>Tersimpan</span>
+                    </span>
+                  )}
+                  {saveState === "error" && (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        performSave(editTitle, editContent, editDiagramCode, baseRev)
+                      }
+                      className="nodrag nowheel inline-flex items-center gap-1 text-[11px] font-semibold text-[#D48B80] bg-[#281816] border border-[#442420] px-2 py-0.5 rounded-full hover:bg-[#38201E] transition-colors"
+                      title={saveErrorMessage || "Klik untuk mencoba lagi"}
+                    >
+                      <AlertCircle className="w-3 h-3 text-[#D48B80]" />
+                      <span>Gagal, coba lagi</span>
+                    </button>
+                  )}
+                  {saveState === "conflict" && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-[#D4B36A] bg-[#262215] border border-[#3D3520] px-2 py-0.5 rounded-full">
+                      <AlertTriangle className="w-3 h-3 text-[#D4B36A]" />
+                      <span>Konflik</span>
+                    </span>
+                  )}
+                  {saveState === "idle" && (
+                    <span className="text-[10px] font-mono font-medium text-[#8EA690] bg-[#162720] border border-[#243D31] px-2 py-0.5 rounded-full">
+                      Mode Edit
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <>
+                  {status === "pending" && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#586C61] bg-[#101A16] border border-[#1F3028] px-2 py-0.5 rounded-full">
+                      <Clock className="w-3 h-3 text-[#586C61]" />
+                      <span>Pending</span>
+                    </span>
+                  )}
+                  {status === "writing" && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono font-semibold text-[#8CB4D9] bg-[#18262F] border border-[#243B4D] px-2 py-0.5 rounded-full animate-pulse">
+                      <Loader2 className="w-3 h-3 text-[#8CB4D9] animate-spin" />
+                      <span>Menulis...</span>
+                    </span>
+                  )}
+                  {status === "ready" && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-[#8EA690] bg-[#152720] border border-[#243D31] px-2 py-0.5 rounded-full">
+                      <CheckCircle2 className="w-3 h-3 text-[#8EA690]" />
+                      <span>Ready</span>
+                    </span>
+                  )}
+                  {status === "failed" && (
+                    <span className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-[#D48B80] bg-[#281816] border border-[#442420] px-2 py-0.5 rounded-full">
+                      <AlertCircle className="w-3 h-3 text-[#D48B80]" />
+                      <span>Gagal</span>
+                    </span>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
-          {/* Status / Save Indicator (FR-EDT-02) */}
-          <div className="flex items-center gap-1 shrink-0">
-            {isEditing ? (
-              <div className="flex items-center gap-1">
-                {saveState === "saving" && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full animate-pulse">
-                    <Loader2 className="w-3 h-3 text-amber-600 animate-spin" />
-                    <span>Menyimpan…</span>
-                  </span>
-                )}
-                {saveState === "saved" && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    <span>Tersimpan</span>
-                  </span>
-                )}
-                {saveState === "error" && (
+          {/* Section Title: Static or Editable */}
+          {isEditing ? (
+            <div className="mt-1">
+              <input
+                type="text"
+                value={editTitle}
+                onChange={handleTitleChange}
+                placeholder="Judul section..."
+                className="nodrag nowheel w-full px-2.5 py-1 text-sm font-serif font-bold text-[#EAF0EB] bg-[#0C1310] border border-[#243C30] rounded-lg shadow-2xs focus:outline-none focus:ring-1 focus:ring-[#8EA690] transition-all"
+              />
+            </div>
+          ) : (
+            <h3 className="text-sm font-serif font-bold text-[#EAF0EB] leading-snug truncate">
+              {title}
+            </h3>
+          )}
+
+          {/* Chapter Context Label */}
+          {storeChapter && (
+            <p className="text-[11px] text-[#586C61] font-mono truncate mt-0.5">
+              Bab: {storeChapter.title}
+            </p>
+          )}
+        </div>
+
+        {/* 409 Conflict Dialog Banner */}
+        {isEditing && saveState === "conflict" && (
+          <div className="nodrag nowheel p-3 bg-[#262215] border-b border-[#3D3520] space-y-2 text-xs text-[#D4B36A] animate-in fade-in duration-150">
+            <div className="flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-[#D4B36A] shrink-0 mt-0.5" />
+              <div className="leading-snug">
+                <p className="font-bold">Terjadi Konflik Revisi!</p>
+                <p className="text-[11px] text-[#8FA396] mt-0.5">
+                  Bagian ini telah dimodifikasi di tempat lain (rev saat ini:{" "}
+                  <span className="font-mono font-bold text-[#EAF0EB]">{conflictRev ?? "baru"}</span>
+                  ). Pilih aksi:
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 pt-1">
+              <button
+                type="button"
+                onClick={handleConflictReload}
+                className="nodrag nowheel flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#8FA396] bg-[#162620] border border-[#243C30] hover:bg-[#1D3028] hover:text-[#EAF0EB] rounded-lg transition-colors"
+              >
+                <RefreshCw className="w-3 h-3" />
+                <span>Muat ulang</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleConflictOverwrite}
+                className="nodrag nowheel flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-[#0C1310] bg-[#D4B36A] hover:bg-[#C0A05A] rounded-lg transition-colors"
+              >
+                <Layers className="w-3 h-3" />
+                <span>Timpa</span>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Body Content */}
+        <div className="p-4 flex-1 text-[#EAF0EB]">
+          {/* EDITING MODE */}
+          {isEditing ? (
+            <div className="space-y-3">
+              {/* Tab selector if diagram exists */}
+              {(diagram?.code || editDiagramCode) && (
+                <div className="flex items-center gap-1 border-b border-[#1F3028] pb-1.5 text-xs font-medium">
                   <button
                     type="button"
-                    onClick={() =>
-                      performSave(editTitle, editContent, editDiagramCode, baseRev)
-                    }
-                    className="nodrag nowheel inline-flex items-center gap-1 text-[11px] font-semibold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded-full hover:bg-rose-100 transition-colors"
-                    title={saveErrorMessage || "Klik untuk mencoba lagi"}
+                    onClick={() => setEditActiveTab("content")}
+                    className={cn(
+                      "nodrag nowheel px-2.5 py-1 rounded-md transition-colors",
+                      editActiveTab === "content"
+                        ? "bg-[#162720] text-[#8EA690] font-semibold border border-[#243D31]"
+                        : "text-[#8FA396] hover:text-[#EAF0EB]"
+                    )}
                   >
-                    <AlertCircle className="w-3 h-3 text-rose-600" />
-                    <span>Gagal, coba lagi</span>
+                    Konten Markdown
                   </button>
-                )}
-                {saveState === "conflict" && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-full">
-                    <AlertTriangle className="w-3 h-3 text-amber-700" />
-                    <span>Konflik</span>
-                  </span>
-                )}
-                {saveState === "idle" && (
-                  <span className="text-[10px] font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 px-2 py-0.5 rounded-full">
-                    Mode Edit
-                  </span>
-                )}
-              </div>
-            ) : (
-              <>
-                {status === "pending" && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
-                    <Clock className="w-3 h-3 text-slate-400" />
-                    <span>Pending</span>
-                  </span>
-                )}
-                {status === "writing" && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-700 bg-indigo-50 border border-indigo-200/80 px-2 py-0.5 rounded-full animate-pulse">
-                    <Loader2 className="w-3 h-3 text-indigo-600 animate-spin" />
-                    <span>Menulis...</span>
-                  </span>
-                )}
-                {status === "ready" && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-emerald-700 bg-emerald-50 border border-emerald-200/80 px-2 py-0.5 rounded-full">
-                    <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                    <span>Ready</span>
-                  </span>
-                )}
-                {status === "failed" && (
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-rose-700 bg-rose-50 border border-rose-200/80 px-2 py-0.5 rounded-full">
-                    <AlertCircle className="w-3 h-3 text-rose-500" />
-                    <span>Gagal</span>
-                  </span>
-                )}
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Section Title: Static or Editable (FR-EDT-01) */}
-        {isEditing ? (
-          <div className="mt-1">
-            <input
-              type="text"
-              value={editTitle}
-              onChange={handleTitleChange}
-              placeholder="Judul section..."
-              className="nodrag nowheel w-full px-2.5 py-1 text-sm font-bold text-slate-900 bg-white border border-slate-300 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all"
-            />
-          </div>
-        ) : (
-          <h3 className="text-sm font-bold text-slate-900 leading-snug truncate">
-            {title}
-          </h3>
-        )}
-
-        {/* Chapter Context Label */}
-        {storeChapter && (
-          <p className="text-[11px] text-slate-400 font-medium truncate mt-0.5">
-            Bab: {storeChapter.title}
-          </p>
-        )}
-      </div>
-
-      {/* 409 Conflict Dialog Banner (FR-EDT-03) */}
-      {isEditing && saveState === "conflict" && (
-        <div className="nodrag nowheel p-3 bg-amber-50 border-b border-amber-200 space-y-2 text-xs text-amber-900 animate-in fade-in duration-150">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-            <div className="leading-snug">
-              <p className="font-bold">Terjadi Konflik Revisi!</p>
-              <p className="text-[11px] text-amber-800 mt-0.5">
-                Bagian ini telah dimodifikasi di tempat lain (rev saat ini:{" "}
-                <span className="font-mono font-bold">{conflictRev ?? "baru"}</span>
-                ). Pilih aksi:
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 pt-1">
-            <button
-              type="button"
-              onClick={handleConflictReload}
-              className="nodrag nowheel flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-slate-700 bg-white border border-slate-300 hover:bg-slate-100 rounded-lg shadow-2xs transition-colors"
-            >
-              <RefreshCw className="w-3 h-3 text-slate-500" />
-              <span>Muat ulang</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={handleConflictOverwrite}
-              className="nodrag nowheel flex items-center gap-1 px-2.5 py-1 text-xs font-semibold text-white bg-amber-600 hover:bg-amber-700 rounded-lg shadow-2xs transition-colors"
-            >
-              <Layers className="w-3 h-3" />
-              <span>Timpa</span>
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Body Content */}
-      <div className="p-4 flex-1">
-        {/* EDITING MODE (FR-EDT-01) */}
-        {isEditing ? (
-          <div className="space-y-3">
-            {/* Tab selector if diagram exists */}
-            {(diagram?.code || editDiagramCode) && (
-              <div className="flex items-center gap-1 border-b border-slate-200 pb-1.5 text-xs font-medium">
-                <button
-                  type="button"
-                  onClick={() => setEditActiveTab("content")}
-                  className={cn(
-                    "nodrag nowheel px-2.5 py-1 rounded-md transition-colors",
-                    editActiveTab === "content"
-                      ? "bg-indigo-50 text-indigo-700 font-semibold"
-                      : "text-slate-500 hover:text-slate-800"
-                  )}
-                >
-                  Konten Markdown
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditActiveTab("diagram")}
-                  className={cn(
-                    "nodrag nowheel px-2.5 py-1 rounded-md transition-colors flex items-center gap-1",
-                    editActiveTab === "diagram"
-                      ? "bg-indigo-50 text-indigo-700 font-semibold"
-                      : "text-slate-500 hover:text-slate-800"
-                  )}
-                >
-                  <Code2 className="w-3 h-3" />
-                  <span>Diagram Mermaid</span>
-                </button>
-              </div>
-            )}
-
-            {/* Markdown Editor */}
-            {editActiveTab === "content" ? (
-              <div className="space-y-1.5">
-                <label className="text-[11px] font-semibold text-slate-600">
-                  Markdown Textarea
-                </label>
-                <textarea
-                  value={editContent}
-                  onChange={handleContentChange}
-                  rows={6}
-                  placeholder="Ketik konten spesifikasi markdown di sini..."
-                  className="nodrag nowheel w-full text-xs font-mono text-slate-800 p-2.5 bg-white border border-slate-300 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y leading-relaxed"
-                />
-              </div>
-            ) : (
-              /* Diagram Code Editor (FR-EDT-09) */
-              <div className="space-y-2">
-                <label className="text-[11px] font-semibold text-slate-600 flex items-center justify-between">
-                  <span>Kode Diagram Mermaid</span>
-                  <span className="text-[10px] text-slate-400 font-normal">
-                    flowchart, sequenceDiagram, erDiagram, dsb.
-                  </span>
-                </label>
-                <textarea
-                  value={editDiagramCode}
-                  onChange={handleDiagramCodeChange}
-                  rows={5}
-                  placeholder="flowchart TD&#10;  A[Mulai] --> B[Selesai]"
-                  className="nodrag nowheel w-full text-xs font-mono text-slate-800 p-2.5 bg-slate-900 text-slate-100 border border-slate-800 rounded-lg shadow-2xs focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-y leading-relaxed"
-                />
-
-                {/* Live Preview of Diagram */}
-                {editDiagramCode.trim().length > 0 && (
-                  <div className="pt-1">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
-                      Pratinjau Diagram
-                    </p>
-                    <MermaidView
-                      code={editDiagramCode}
-                      sectionId={id}
-                      prdId={prdId || undefined}
-                      status="unchecked"
-                      onStatusChange={handleDiagramStatusChange}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </div>
-        ) : (
-          /* READ / DISPLAY MODE */
-          <>
-            {/* Status: Pending Skeleton */}
-            {status === "pending" && (
-              <div className="space-y-2.5 py-1">
-                {brief ? (
-                  <p className="text-xs text-slate-500 italic mb-3 leading-relaxed">
-                    {brief}
-                  </p>
-                ) : null}
-                <div className="h-3 bg-slate-100 rounded-md animate-pulse w-5/6" />
-                <div className="h-3 bg-slate-100 rounded-md animate-pulse w-full" />
-                <div className="h-3 bg-slate-100 rounded-md animate-pulse w-3/4" />
-              </div>
-            )}
-
-            {/* Status: Writing Skeleton */}
-            {status === "writing" && (
-              <div className="space-y-3 py-2">
-                <div className="flex items-center gap-2 text-xs font-semibold text-indigo-700 bg-indigo-50/80 p-2.5 rounded-xl border border-indigo-100">
-                  <Loader2 className="w-4 h-4 text-indigo-600 animate-spin shrink-0" />
-                  <span>AI sedang menyusun spesifikasi untuk bagian ini...</span>
+                  <button
+                    type="button"
+                    onClick={() => setEditActiveTab("diagram")}
+                    className={cn(
+                      "nodrag nowheel px-2.5 py-1 rounded-md transition-colors flex items-center gap-1",
+                      editActiveTab === "diagram"
+                        ? "bg-[#162720] text-[#8EA690] font-semibold border border-[#243D31]"
+                        : "text-[#8FA396] hover:text-[#EAF0EB]"
+                    )}
+                  >
+                    <Code2 className="w-3 h-3" />
+                    <span>Diagram Mermaid</span>
+                  </button>
                 </div>
-                <div className="h-2.5 bg-indigo-100/50 rounded animate-pulse w-full" />
-                <div className="h-2.5 bg-indigo-100/50 rounded animate-pulse w-4/5" />
-              </div>
-            )}
-
-            {/* Status: Ready State */}
-            {status === "ready" && (
-              <div className="space-y-3.5">
-                {renderedContent ? (
-                  <div
-                    className="nodrag nowheel text-xs text-slate-700 leading-relaxed max-h-52 overflow-y-auto prose prose-xs prose-slate max-w-none scrollbar-thin scrollbar-thumb-slate-200 select-text"
-                    dangerouslySetInnerHTML={{ __html: renderedContent }}
-                  />
-                ) : (
-                  <p className="text-xs text-slate-400 italic">Konten kosong</p>
-                )}
-
-                {/* Mermaid Diagram View (FR-EDT-05, FR-EDT-06, FR-EDT-07) */}
-                {diagram?.code && (
-                  <div className="pt-1">
-                    <MermaidView
-                      code={diagram.code}
-                      sectionId={id}
-                      prdId={prdId || undefined}
-                      status={diagram.status}
-                      onStatusChange={handleDiagramStatusChange}
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Status: Failed State */}
-            {status === "failed" && (
-              <div className="p-3 bg-rose-50 border border-rose-200/80 rounded-xl space-y-2">
-                <div className="flex items-start gap-2 text-rose-800 text-xs">
-                  <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-semibold">Gagal memproses bagian ini</p>
-                    <p className="text-[11px] text-rose-600 mt-0.5">
-                      {error?.message ||
-                        "Terjadi kesalahan saat memanggil model AI."}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            )}
-          </>
-        )}
-      </div>
-
-      {/* Action Footer */}
-      <div className="px-4 py-2.5 bg-slate-50/80 border-t border-slate-100 flex items-center justify-between text-xs">
-        {isEditing ? (
-          <div className="flex items-center gap-2 w-full justify-between">
-            <span className="text-[10px] text-slate-400 font-mono">
-              rev {baseRev}
-            </span>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsEditing(false);
-                  setEditTitle(title);
-                  setEditContent(content);
-                  setEditDiagramCode(diagram?.code || "");
-                  setSaveState("idle");
-                }}
-                className="nodrag nowheel px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-slate-800 bg-white hover:bg-slate-100 border border-slate-200 rounded-lg shadow-2xs transition-colors"
-              >
-                Batal
-              </button>
-
-              <button
-                type="button"
-                onClick={handleFinishEditing}
-                className="nodrag nowheel px-3 py-1 text-xs font-semibold text-white bg-indigo-600 hover:bg-indigo-700 rounded-lg shadow-2xs transition-colors flex items-center gap-1"
-              >
-                <Check className="w-3.5 h-3.5" />
-                <span>Selesai</span>
-              </button>
-            </div>
-          </div>
-        ) : (
-          <>
-            <div className="flex items-center gap-2">
-              {status === "failed" ? (
-                <button
-                  type="button"
-                  onClick={handleRetry}
-                  disabled={isGenerating}
-                  className={cn(
-                    "nodrag nowheel px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs",
-                    isGenerating
-                      ? "bg-slate-100 text-slate-400 cursor-not-allowed opacity-60"
-                      : "text-rose-700 bg-rose-100 hover:bg-rose-200"
-                  )}
-                  title={isGenerating ? "Proses generate sedang berjalan..." : "Coba generate ulang bagian ini"}
-                >
-                  <RotateCcw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
-                  <span>{isGenerating ? "Sedang generate..." : "Coba lagi"}</span>
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={(e: any) => {
-                    e.stopPropagation();
-                    selectNode(id);
-                  }}
-                  className="nodrag nowheel px-2.5 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs"
-                  title="Buka bilah instruksi AI untuk bagian ini"
-                >
-                  <Sparkles className="w-3 h-3 text-indigo-600" />
-                  <span>Ubah dengan AI</span>
-                </button>
               )}
 
-              {/* Edit Button (disabled if pending or writing - FR-EDT-04) */}
-              <button
-                type="button"
-                disabled={!canEdit}
-                onClick={(e: any) => {
-                  e.stopPropagation();
-                  if (canEdit) {
-                    setIsEditing(true);
-                  }
-                }}
-                className={cn(
-                  "nodrag nowheel px-2 py-1 text-xs font-medium rounded-lg transition-colors flex items-center gap-1",
-                  canEdit
-                    ? "text-slate-600 hover:text-slate-900 hover:bg-slate-200/60 cursor-pointer"
-                    : "text-slate-300 cursor-not-allowed opacity-60"
-                )}
-                title={
-                  canEdit
-                    ? "Edit manual judul dan konten"
-                    : "Tidak dapat mengedit saat sedang diproses"
-                }
-              >
-                <Pencil className="w-3 h-3 text-slate-400" />
-                <span>Edit</span>
-              </button>
+              {/* Markdown Editor */}
+              {editActiveTab === "content" ? (
+                <div className="space-y-1.5">
+                  <label className="text-[11px] font-mono font-medium text-[#8FA396]">
+                    Markdown Textarea
+                  </label>
+                  <textarea
+                    value={editContent}
+                    onChange={handleContentChange}
+                    rows={6}
+                    placeholder="Ketik konten spesifikasi markdown di sini..."
+                    className="nodrag nowheel w-full text-xs font-mono text-[#EAF0EB] placeholder-[#586C61] p-2.5 bg-[#0C1310] border border-[#243C30] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8EA690] resize-y leading-relaxed"
+                  />
+                </div>
+              ) : (
+                /* Diagram Code Editor */
+                <div className="space-y-2">
+                  <label className="text-[11px] font-mono font-medium text-[#8FA396] flex items-center justify-between">
+                    <span>Kode Diagram Mermaid</span>
+                    <span className="text-[10px] text-[#586C61] font-mono">
+                      flowchart, sequenceDiagram, erDiagram, dsb.
+                    </span>
+                  </label>
+                  <textarea
+                    value={editDiagramCode}
+                    onChange={handleDiagramCodeChange}
+                    rows={5}
+                    placeholder="flowchart TD&#10;  A[Mulai] --> B[Selesai]"
+                    className="nodrag nowheel w-full text-xs font-mono text-[#EAF0EB] placeholder-[#586C61] p-2.5 bg-[#0C1310] border border-[#243C30] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8EA690] resize-y leading-relaxed"
+                  />
+
+                  {/* Live Preview of Diagram */}
+                  {editDiagramCode.trim().length > 0 && (
+                    <div className="pt-1">
+                      <p className="text-[10px] font-mono font-semibold text-[#586C61] uppercase tracking-wider mb-1">
+                        Pratinjau Diagram
+                      </p>
+                      <MermaidView
+                        code={editDiagramCode}
+                        sectionId={id}
+                        prdId={prdId || undefined}
+                        status="unchecked"
+                        onStatusChange={handleDiagramStatusChange}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
+          ) : (
+            /* READ / DISPLAY MODE */
+            <>
+              {/* Status: Pending Skeleton */}
+              {status === "pending" && (
+                <div className="space-y-2.5 py-1">
+                  {brief ? (
+                    <p className="text-xs text-[#8FA396] italic mb-3 leading-relaxed">
+                      {brief}
+                    </p>
+                  ) : null}
+                  <div className="h-3 bg-[#162720] border border-[#1F3028] rounded animate-pulse w-5/6" />
+                  <div className="h-3 bg-[#162720] border border-[#1F3028] rounded animate-pulse w-full" />
+                  <div className="h-3 bg-[#162720] border border-[#1F3028] rounded animate-pulse w-3/4" />
+                </div>
+              )}
 
-            <span className="text-[10px] text-slate-400 font-mono">
-              rev {rev}
-            </span>
-          </>
-        )}
+              {/* Status: Writing Skeleton */}
+              {status === "writing" && (
+                <div className="space-y-3 py-2">
+                  <div className="flex items-center gap-2 text-xs font-mono font-semibold text-[#8CB4D9] bg-[#18262F] border border-[#243B4D] p-2.5 rounded-xl">
+                    <Loader2 className="w-4 h-4 text-[#8CB4D9] animate-spin shrink-0" />
+                    <span>AI sedang menyusun spesifikasi untuk bagian ini...</span>
+                  </div>
+                  <div className="h-2.5 bg-[#162720] rounded animate-pulse w-full" />
+                  <div className="h-2.5 bg-[#162720] rounded animate-pulse w-4/5" />
+                </div>
+              )}
+
+              {/* Status: Ready State */}
+              {status === "ready" && (
+                <div className="space-y-3.5">
+                  {renderedContent ? (
+                    <div
+                      className="nodrag nowheel text-xs text-[#C5D8C7] leading-relaxed max-h-56 overflow-y-auto prose prose-invert prose-xs max-w-none select-text"
+                      dangerouslySetInnerHTML={{ __html: renderedContent }}
+                    />
+                  ) : (
+                    <p className="text-xs text-[#586C61] italic">Konten kosong</p>
+                  )}
+
+                  {/* Mermaid Diagram View */}
+                  {diagram?.code && (
+                    <div className="pt-1">
+                      <MermaidView
+                        code={diagram.code}
+                        sectionId={id}
+                        prdId={prdId || undefined}
+                        status={diagram.status}
+                        onStatusChange={handleDiagramStatusChange}
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Status: Failed State */}
+              {status === "failed" && (
+                <div className="p-3 bg-[#281816] border border-[#442420] rounded-xl space-y-2">
+                  <div className="flex items-start gap-2 text-[#D48B80] text-xs">
+                    <AlertCircle className="w-4 h-4 text-[#D48B80] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-semibold">Gagal memproses bagian ini</p>
+                      <p className="text-[11px] text-[#D48B80] mt-0.5 opacity-90">
+                        {error?.message ||
+                          "Terjadi kesalahan saat memanggil model AI."}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {/* Action Footer */}
+        <div className="px-4 py-2.5 bg-[#101A16] border-t border-[#1F3028] flex items-center justify-between text-xs">
+          {isEditing ? (
+            <div className="flex items-center gap-2 w-full justify-between">
+              <span className="text-[10px] text-[#586C61] font-mono">
+                rev {baseRev}
+              </span>
+
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsEditing(false);
+                    setEditTitle(title);
+                    setEditContent(content);
+                    setEditDiagramCode(diagram?.code || "");
+                    setSaveState("idle");
+                  }}
+                  className="nodrag nowheel px-2.5 py-1 text-xs font-medium text-[#8FA396] hover:text-[#EAF0EB] bg-[#162620] hover:bg-[#1D3028] border border-[#22352B] rounded-lg transition-colors cursor-pointer"
+                >
+                  Batal
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleFinishEditing}
+                  className="nodrag nowheel px-3 py-1 text-xs font-semibold text-[#0C1310] bg-[#8EA690] hover:bg-[#7D967F] rounded-lg transition-colors flex items-center gap-1 cursor-pointer"
+                >
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Selesai</span>
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-center gap-2">
+                {status === "failed" ? (
+                  <button
+                    type="button"
+                    onClick={handleRetry}
+                    disabled={isGenerating}
+                    className={cn(
+                      "nodrag nowheel px-2.5 py-1 text-xs font-semibold rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs",
+                      isGenerating
+                        ? "bg-[#192A22] text-[#586C61] cursor-not-allowed opacity-60"
+                        : "text-[#D48B80] bg-[#281816] hover:bg-[#38201E] border border-[#442420] cursor-pointer"
+                    )}
+                    title={isGenerating ? "Proses generate sedang berjalan..." : "Coba generate ulang bagian ini"}
+                  >
+                    <RotateCcw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
+                    <span>{isGenerating ? "Sedang generate..." : "Coba lagi"}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={(e: any) => {
+                      e.stopPropagation();
+                      selectNode(id);
+                    }}
+                    className="nodrag nowheel px-2.5 py-1 text-xs font-semibold text-[#8EA690] bg-[#162720] hover:bg-[#1D332A] border border-[#243D31] rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    title="Buka bilah instruksi AI untuk bagian ini"
+                  >
+                    <MessageSquare className="w-3 h-3 text-[#8EA690]" />
+                    <span>Ubah dengan AI</span>
+                  </button>
+                )}
+
+                {/* Edit Button */}
+                <button
+                  type="button"
+                  disabled={!canEdit}
+                  onClick={(e: any) => {
+                    e.stopPropagation();
+                    if (canEdit) {
+                      setIsEditing(true);
+                    }
+                  }}
+                  className={cn(
+                    "nodrag nowheel px-2 py-1 text-xs font-medium rounded-lg transition-colors flex items-center gap-1",
+                    canEdit
+                      ? "text-[#8FA396] hover:text-[#EAF0EB] hover:bg-[#162620] cursor-pointer"
+                      : "text-[#586C61] cursor-not-allowed opacity-50"
+                  )}
+                  title={
+                    canEdit
+                      ? "Edit manual judul dan konten"
+                      : "Tidak dapat mengedit saat sedang diproses"
+                  }
+                >
+                  <Pencil className="w-3 h-3 text-[#586C61]" />
+                  <span>Edit</span>
+                </button>
+              </div>
+
+              <span className="text-[10px] text-[#586C61] font-mono">
+                rev {rev}
+              </span>
+            </>
+          )}
+        </div>
       </div>
 
-      </div>
-
-      {/* Floating Node Instruction Bar (FR-AI-01, Section 8.2) */}
+      {/* Floating Node Instruction Bar */}
       {selected && status === "ready" && !isEditing && (
         <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 z-50">
           <NodeInstructionBar
@@ -828,7 +774,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
       <Handle
         type="source"
         position={Position.Right}
-        className="w-3.5 h-3.5 !bg-indigo-500 border-2 border-white rounded-full hover:!bg-indigo-600 transition-colors shadow-xs"
+        className="w-3.5 h-3.5 !bg-[#8EA690] border-2 border-[#121E19] rounded-full hover:!bg-[#A0B8A2] transition-colors shadow-xs"
       />
     </div>
   );

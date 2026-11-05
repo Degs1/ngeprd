@@ -136,7 +136,7 @@ export default function PrdList() {
         {[1, 2, 3].map((n) => (
           <div
             key={n}
-            className="h-12 rounded-xl bg-slate-100 animate-pulse border border-slate-200/50"
+            className="h-12 rounded-xl bg-[#13211B] animate-pulse border border-[#1F3028]"
           />
         ))}
       </div>
@@ -145,13 +145,13 @@ export default function PrdList() {
 
   if (prds.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-6 text-center text-slate-500 gap-2">
-        <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400">
+      <div className="flex flex-col items-center justify-center p-6 text-center text-[#8FA396] gap-2">
+        <div className="w-10 h-10 rounded-full bg-[#13211B] border border-[#1F3028] flex items-center justify-center text-[#586C61]">
           <FileText className="w-5 h-5" />
         </div>
-        <p className="text-xs font-medium text-slate-600">Belum ada PRD</p>
-        <p className="text-[11px] text-slate-400">
-          Tulis ide proyek pertamamu di dashboard untuk mulai membuat PRD!
+        <p className="text-xs font-medium text-[#EAF0EB]">Belum ada PRD</p>
+        <p className="text-[11px] text-[#586C61] max-w-[200px] leading-relaxed">
+          Tulis ide proyek pertamamu di dashboard untuk mulai membuat PRD
         </p>
       </div>
     );
@@ -159,9 +159,9 @@ export default function PrdList() {
 
   if (filteredPrds.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center p-6 text-center text-slate-500 gap-2">
-        <Search className="w-5 h-5 text-slate-400" />
-        <p className="text-xs text-slate-500">
+      <div className="flex flex-col items-center justify-center p-6 text-center text-[#8FA396] gap-2">
+        <Search className="w-5 h-5 text-[#586C61]" />
+        <p className="text-xs text-[#8FA396]">
           Tidak ada PRD dengan judul &ldquo;{searchQuery}&rdquo;
         </p>
       </div>
@@ -173,7 +173,7 @@ export default function PrdList() {
 
     return (
       <div className="mb-4">
-        <div className="px-3 py-1 text-[11px] font-semibold text-slate-400 tracking-wider uppercase">
+        <div className="px-3 py-1 text-[10px] font-mono font-semibold text-[#586C61] tracking-wider uppercase">
           {title}
         </div>
         <div className="flex flex-col gap-1 mt-1">
@@ -187,8 +187,8 @@ export default function PrdList() {
                 className={cn(
                   "group relative flex items-center justify-between rounded-xl px-3 py-2 text-sm transition-all border",
                   isActive
-                    ? "bg-indigo-50/80 border-indigo-200 text-indigo-950 font-medium shadow-sm"
-                    : "border-transparent text-slate-700 hover:bg-slate-100/80 hover:text-slate-900"
+                    ? "bg-[#162620] border-[#243C30] text-[#EAF0EB] font-medium"
+                    : "border-transparent text-[#8FA396] hover:bg-[#13211B] hover:text-[#EAF0EB]"
                 )}
               >
                 {isEditing ? (
@@ -206,13 +206,13 @@ export default function PrdList() {
                       }}
                       autoFocus
                       disabled={isRenaming}
-                      className="w-full px-2 py-1.5 text-xs border border-indigo-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-400 bg-white"
+                      className="w-full px-2 py-1.5 text-xs border border-[#243C30] rounded-lg focus:outline-none focus:ring-1 focus:ring-[#8EA690] bg-[#0C1310] text-[#EAF0EB]"
                     />
                     <button
                       type="button"
                       onClick={handleSaveRename}
                       disabled={isRenaming || !editTitle.trim()}
-                      className="p-1.5 rounded-lg text-emerald-600 hover:bg-emerald-50 active:bg-emerald-100 disabled:opacity-50"
+                      className="p-1.5 rounded-lg text-[#8EA690] hover:bg-[#162620] active:bg-[#1D332A] disabled:opacity-50"
                       title="Simpan"
                       aria-label="Simpan judul"
                     >
@@ -222,7 +222,7 @@ export default function PrdList() {
                       type="button"
                       onClick={handleCancelRename}
                       disabled={isRenaming}
-                      className="p-1.5 rounded-lg text-slate-400 hover:bg-slate-200 active:bg-slate-300"
+                      className="p-1.5 rounded-lg text-[#586C61] hover:text-[#8FA396] hover:bg-[#162620]"
                       title="Batal"
                       aria-label="Batal ubah judul"
                     >
@@ -237,7 +237,12 @@ export default function PrdList() {
                       className="flex-1 min-w-0 pr-2 py-0.5"
                     >
                       <div className="flex items-center gap-1.5">
-                        <span className="truncate text-xs text-slate-800 font-medium">
+                        <span
+                          className={cn(
+                            "truncate text-xs font-medium transition-colors",
+                            isActive ? "text-[#EAF0EB]" : "text-[#8FA396] group-hover:text-[#EAF0EB]"
+                          )}
+                        >
                           {item.title}
                         </span>
                       </div>
@@ -251,7 +256,7 @@ export default function PrdList() {
                       <button
                         type="button"
                         onClick={(e) => handleStartRename(e, item)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-200/60 active:bg-slate-200 transition-colors"
+                        className="p-1.5 rounded-lg text-[#586C61] hover:text-[#EAF0EB] hover:bg-[#162620] active:bg-[#1D332A] transition-colors"
                         title="Ganti nama"
                         aria-label={`Ganti nama ${item.title}`}
                       >
@@ -260,7 +265,7 @@ export default function PrdList() {
                       <button
                         type="button"
                         onClick={(e) => handleStartDelete(e, item)}
-                        className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 active:bg-rose-100 transition-colors"
+                        className="p-1.5 rounded-lg text-[#586C61] hover:text-[#D48B80] hover:bg-[#281816] active:bg-[#38201E] transition-colors"
                         title="Hapus PRD"
                         aria-label={`Hapus ${item.title}`}
                       >

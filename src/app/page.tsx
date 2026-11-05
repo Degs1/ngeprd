@@ -1,40 +1,40 @@
 import React from "react";
 import LandingNavbar from "@/components/landing/LandingNavbar";
-import HeroCursorAnimation from "@/components/landing/HeroCursorAnimation";
-import ProductPreview from "@/components/landing/ProductPreview";
-import WorkflowSection from "@/components/landing/WorkflowSection";
+import HeroSection from "@/components/landing/HeroSection";
+import ProductShowcase from "@/components/landing/ProductShowcase";
+import PipelineSection from "@/components/landing/PipelineSection";
 import FeaturesSection from "@/components/landing/FeaturesSection";
-import ArchitectureSection from "@/components/landing/ArchitectureSection";
+import SpecimenComparison from "@/components/landing/SpecimenComparison";
 import CtaSection from "@/components/landing/CtaSection";
 import LandingFooter from "@/components/landing/LandingFooter";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen min-h-[100dvh] w-full bg-white text-[#20242C] overflow-x-clip flex flex-col font-sans">
-      {/* Top Sticky Header */}
+    <div className="min-h-screen min-h-[100dvh] w-full bg-[#0C1310] text-[#EAF0EB] overflow-x-clip flex flex-col font-sans selection:bg-[#1E2E25] selection:text-[#8EA690]">
+      {/* Top Fixed Header with Brand Logo */}
       <LandingNavbar />
 
       <main className="flex-1 w-full">
-        {/* Hero Section with Interactive Multi-Cursor Assembly Animation */}
-        <HeroCursorAnimation />
+        {/* Editorial Hero with Interactive Prompt Bar */}
+        <HeroSection />
 
-        {/* Product Showcase / Preview Section */}
-        <ProductPreview />
+        {/* Live Workspace App-Frame Showcase */}
+        <ProductShowcase />
 
-        {/* 5-Step Workflow Section */}
-        <WorkflowSection />
+        {/* 4-Stage Precision Pipeline */}
+        <PipelineSection />
 
-        {/* Core Technical Capabilities Section */}
+        {/* Technical Architecture & Capabilities Bento */}
         <FeaturesSection />
 
-        {/* Architecture & Engine Specifications */}
-        <ArchitectureSection />
+        {/* Quality Comparison: Generic Chatbot vs ngePRD */}
+        <SpecimenComparison />
 
-        {/* Final Workspace CTA */}
+        {/* Workspace Conversion CTA */}
         <CtaSection />
       </main>
 
-      {/* Clean & Honest Footer */}
+      {/* Honest Forest Editorial Footer */}
       <LandingFooter />
     </div>
   );

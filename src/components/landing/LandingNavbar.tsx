@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { Menu, X, ArrowRight, LayoutDashboard } from "lucide-react";
+import { Menu, X, ArrowRight, LayoutDashboard, Terminal } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface NavItem {
@@ -12,10 +12,10 @@ interface NavItem {
 }
 
 const NAV_ITEMS: NavItem[] = [
-  { id: "alur-kerja", label: "Alur Kerja" },
-  { id: "preview", label: "Preview PRD & Canvas" },
-  { id: "fitur", label: "Fitur Utama" },
-  { id: "arsitektur", label: "Spesifikasi Engine" },
+  { id: "showcase", label: "Live Canvas" },
+  { id: "pipeline", label: "Alur Pipeline" },
+  { id: "fitur", label: "Spesifikasi Teknis" },
+  { id: "specimen", label: "Spesimen prd.md" },
 ];
 
 export default function LandingNavbar() {
@@ -28,10 +28,10 @@ export default function LandingNavbar() {
 
   useEffect(() => {
     const handleScroll = () => {
-      setIsScrolled(window.scrollY > 15);
+      setIsScrolled(window.scrollY > 20);
 
-      const scrollPosition = window.scrollY + 130;
-      let currentSection = "";
+      const scrollPosition = window.scrollY + 140;
+      let current = "";
 
       for (const item of NAV_ITEMS) {
         const el = document.getElementById(item.id);
@@ -39,16 +39,16 @@ export default function LandingNavbar() {
           const top = el.offsetTop;
           const height = el.offsetHeight;
           if (scrollPosition >= top && scrollPosition < top + height) {
-            currentSection = item.id;
+            current = item.id;
             break;
           }
         }
       }
 
-      if (window.scrollY < 200) {
-        currentSection = "";
+      if (window.scrollY < 250) {
+        current = "";
       }
-      setActiveSection(currentSection);
+      setActiveSection(current);
     };
 
     window.addEventListener("scroll", handleScroll, { passive: true });
@@ -62,7 +62,7 @@ export default function LandingNavbar() {
 
     const targetEl = document.getElementById(targetId);
     if (targetEl) {
-      const navOffset = 70;
+      const navOffset = 74;
       const elementPosition = targetEl.getBoundingClientRect().top;
       const offsetPosition = elementPosition + window.scrollY - navOffset;
 
@@ -72,11 +72,6 @@ export default function LandingNavbar() {
       });
 
       window.history.pushState(null, "", `#${targetId}`);
-
-      // Broadcast highlight event for target section animation
-      window.dispatchEvent(
-        new CustomEvent("section-highlight", { detail: { id: targetId } })
-      );
     }
   };
 
@@ -86,32 +81,28 @@ export default function LandingNavbar() {
         className={cn(
           "fixed top-0 left-0 right-0 z-50 w-full transition-all duration-300",
           isScrolled
-            ? "bg-white/90 backdrop-blur-md border-b border-[#E1E5EC] shadow-xs"
-            : "bg-white/95 backdrop-blur-xs border-b border-[#E1E5EC]"
+            ? "bg-[#0C1310]/95 backdrop-blur-md border-b border-[#1F3028] shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
+            : "bg-[#0C1310]/80 backdrop-blur-xs border-b border-[#1F3028]/60"
         )}
       >
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          {/* Brand / Logo */}
-          <Link href="/" className="flex items-center gap-2.5 group cursor-pointer">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform duration-200">
+          {/* Brand Logo with User's Uploaded Photo */}
+          <Link href="/" className="flex items-center gap-3 group cursor-pointer select-none">
+            <div className="relative flex items-center">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src="/logo-icon.png"
+                src="/brand-logo-cropped.png"
                 alt="ngePRD"
-                className="w-8 h-8 object-contain"
+                className="h-7 w-auto object-contain transition-transform duration-200 group-hover:scale-[1.03]"
               />
             </div>
-            <span className="font-extrabold text-xl tracking-tight text-[#20242C] flex items-center">
-              <span className="text-sky-500">nge</span>
-              <span className="text-blue-700">PRD</span>
-            </span>
-            <span className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded bg-indigo-50 border border-indigo-200 text-indigo-700 hidden sm:inline-block ml-1">
-              v2.1
+            <span className="text-[10px] font-mono uppercase tracking-widest px-2 py-0.5 rounded border border-[#1F3028] bg-[#121D18] text-[#8EA690] hidden sm:inline-block">
+              v2.2
             </span>
           </Link>
 
           {/* Desktop Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1.5 text-sm font-medium">
+          <nav className="hidden md:flex items-center gap-1 text-xs font-mono tracking-tight">
             {NAV_ITEMS.map((item) => {
               const isActive = activeSection === item.id;
               return (
@@ -120,44 +111,41 @@ export default function LandingNavbar() {
                   href={`#${item.id}`}
                   onClick={(e) => handleNavClick(e, item.id)}
                   className={cn(
-                    "px-3 py-1.5 rounded-lg transition-all duration-200 cursor-pointer relative",
+                    "px-3 py-1.5 rounded transition-all duration-150 cursor-pointer relative",
                     isActive
-                      ? "text-[#2854EB] bg-[#EEF2FD] font-semibold"
-                      : "text-[#596273] hover:text-[#20242C] hover:bg-[#F5F7FA]"
+                      ? "text-[#EAF0EB] bg-[#14221C] border border-[#1F3028]"
+                      : "text-[#8FA396] hover:text-[#EAF0EB] hover:bg-[#121D18]"
                   )}
                 >
                   <span>{item.label}</span>
-                  {isActive && (
-                    <span className="absolute bottom-0.5 left-3 right-3 h-0.5 bg-[#2854EB] rounded-full" />
-                  )}
                 </a>
               );
             })}
           </nav>
 
-          {/* Desktop Action Buttons */}
-          <div className="hidden md:flex items-center gap-3">
+          {/* Desktop Auth / CTA Actions */}
+          <div className="hidden sm:flex items-center gap-2.5">
             {isAuthenticated ? (
               <Link
                 href="/dashboard"
-                className="px-4 py-2 rounded-lg bg-[#2854EB] hover:bg-[#1D44D8] text-white text-xs sm:text-sm font-semibold shadow-xs transition-all duration-200 active:scale-95 flex items-center gap-2 cursor-pointer"
+                className="px-3.5 py-1.5 rounded-md bg-[#8EA690] hover:bg-[#7D967F] text-[#0C1310] font-sans font-semibold text-xs tracking-tight transition-all duration-150 active:scale-95 flex items-center gap-1.5 cursor-pointer shadow-xs"
               >
-                <LayoutDashboard className="w-4 h-4" />
-                <span>Buka Workspace</span>
+                <LayoutDashboard className="w-3.5 h-3.5" />
+                <span>Dashboard</span>
               </Link>
             ) : (
               <>
                 <Link
                   href="/login"
-                  className="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-medium text-[#596273] hover:text-[#20242C] hover:bg-[#F5F7FA] transition-colors cursor-pointer"
+                  className="px-3 py-1.5 rounded-md text-xs font-sans text-[#8FA396] hover:text-[#EAF0EB] hover:bg-[#121D18] border border-transparent hover:border-[#1F3028] transition-all duration-150 cursor-pointer"
                 >
                   Masuk
                 </Link>
                 <Link
                   href="/dashboard"
-                  className="px-4 py-2 rounded-lg bg-[#2854EB] hover:bg-[#1D44D8] text-white text-xs sm:text-sm font-semibold shadow-xs transition-all duration-200 active:scale-95 flex items-center gap-1.5 cursor-pointer"
+                  className="px-3.5 py-1.5 rounded-md bg-[#8EA690] hover:bg-[#7D967F] text-[#0C1310] font-sans font-semibold text-xs tracking-tight transition-all duration-150 active:scale-95 flex items-center gap-1.5 cursor-pointer shadow-xs"
                 >
-                  <span>Buka Workspace</span>
+                  <span>Mulai PRD</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </Link>
               </>
@@ -165,69 +153,60 @@ export default function LandingNavbar() {
           </div>
 
           {/* Mobile Menu Button */}
-          <div className="md:hidden flex items-center gap-2">
+          <div className="flex sm:hidden items-center gap-2">
+            <Link
+              href="/dashboard"
+              className="px-2.5 py-1 rounded bg-[#8EA690] text-[#0C1310] font-semibold text-xs tracking-tight"
+            >
+              Mulai
+            </Link>
             <button
               type="button"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="w-10 h-10 rounded-lg text-[#596273] hover:text-[#20242C] hover:bg-[#F5F7FA] flex items-center justify-center transition-colors cursor-pointer"
-              aria-label={mobileMenuOpen ? "Tutup menu" : "Buka menu navigasi"}
+              className="p-1.5 rounded-md text-[#8FA396] hover:text-[#EAF0EB] hover:bg-[#121D18] border border-[#1F3028] transition-colors"
+              aria-label="Toggle menu"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
 
-        {/* Mobile Drawer Menu */}
+        {/* Mobile Dropdown Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-[#E1E5EC] bg-white px-4 py-4 flex flex-col gap-3 shadow-lg animate-slide-down">
-            <nav className="flex flex-col gap-1 text-sm font-medium text-[#596273]">
-              {NAV_ITEMS.map((item) => {
-                const isActive = activeSection === item.id;
-                return (
-                  <a
-                    key={item.id}
-                    href={`#${item.id}`}
-                    onClick={(e) => handleNavClick(e, item.id)}
-                    className={cn(
-                      "px-3 py-2 rounded-md transition-colors cursor-pointer flex items-center justify-between",
-                      isActive
-                        ? "bg-[#EEF2FD] text-[#2854EB] font-semibold"
-                        : "hover:bg-[#F5F7FA] hover:text-[#20242C]"
-                    )}
-                  >
-                    <span>{item.label}</span>
-                    {isActive && <span className="w-1.5 h-1.5 rounded-full bg-[#2854EB]" />}
-                  </a>
-                );
-              })}
+          <div className="sm:hidden bg-[#0C1310] border-b border-[#1F3028] px-4 py-4 space-y-2 animate-fade-in shadow-xl">
+            <nav className="flex flex-col space-y-1">
+              {NAV_ITEMS.map((item) => (
+                <a
+                  key={item.id}
+                  href={`#${item.id}`}
+                  onClick={(e) => handleNavClick(e, item.id)}
+                  className="px-3 py-2 rounded text-xs font-mono text-[#C2D1C7] hover:text-[#EAF0EB] hover:bg-[#121D18] transition-colors"
+                >
+                  {item.label}
+                </a>
+              ))}
             </nav>
-
-            <div className="pt-3 border-t border-[#E1E5EC] flex flex-col gap-2">
+            <div className="pt-3 border-t border-[#1F3028] flex flex-col gap-2">
               {isAuthenticated ? (
                 <Link
                   href="/dashboard"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full py-2.5 rounded-lg bg-[#2854EB] text-white text-sm font-semibold flex items-center justify-center gap-2"
+                  className="w-full py-2.5 rounded bg-[#8EA690] text-[#0C1310] text-center font-semibold text-xs"
                 >
-                  <LayoutDashboard className="w-4 h-4" />
-                  <span>Buka Workspace</span>
+                  Buka Dashboard
                 </Link>
               ) : (
                 <>
                   <Link
                     href="/login"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full py-2 rounded-lg text-center text-sm font-medium text-[#596273] bg-[#F5F7FA] border border-[#E1E5EC]"
+                    className="w-full py-2 rounded border border-[#1F3028] text-center text-xs text-[#C2D1C7] bg-[#121D18]"
                   >
-                    Masuk
+                    Masuk Akun
                   </Link>
                   <Link
                     href="/dashboard"
-                    onClick={() => setMobileMenuOpen(false)}
-                    className="w-full py-2.5 rounded-lg bg-[#2854EB] text-white text-sm font-semibold flex items-center justify-center gap-1.5"
+                    className="w-full py-2 rounded bg-[#8EA690] text-[#0C1310] text-center font-semibold text-xs"
                   >
-                    <span>Mulai Buat PRD</span>
-                    <ArrowRight className="w-4 h-4" />
+                    Mulai PRD Baru
                   </Link>
                 </>
               )}
@@ -235,8 +214,6 @@ export default function LandingNavbar() {
           </div>
         )}
       </header>
-      {/* Spacer to preserve document layout under fixed navbar */}
-      <div className="h-16 w-full shrink-0" aria-hidden="true" />
     </>
   );
 }

@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { diffWordsWithSpace, diffLines, type Change } from "diff";
-import { FileText, Code2, Columns, AlignLeft, Check, ChevronDown, ChevronRight } from "lucide-react";
+import { diffWordsWithSpace, diffLines } from "diff";
+import { Code2, Columns, AlignLeft, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface DiffViewProps {
@@ -70,31 +70,31 @@ export function DiffView({
     beforeTitle.trim() !== afterTitle.trim();
 
   return (
-    <div className={cn("flex flex-col text-xs rounded-xl border border-slate-200 bg-white overflow-hidden shadow-2xs", className)}>
+    <div className={cn("flex flex-col text-xs rounded-xl border border-[#1F3028] bg-[#0C1310] overflow-hidden text-[#EAF0EB] shadow-2xs", className)}>
       {/* Diff Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-slate-50 border-b border-slate-200 select-none">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[#121E19] border-b border-[#1F3028] select-none">
         <div className="flex items-center gap-2">
           {/* Summary pill */}
           <div className="flex items-center gap-1.5 font-mono text-[11px]">
-            <span className="text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-semibold border border-emerald-200/60">
+            <span className="text-[#8EA690] bg-[#162720] px-1.5 py-0.5 rounded font-semibold border border-[#243D31]">
               +{stats.additions} kata
             </span>
-            <span className="text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded font-semibold border border-rose-200/60">
+            <span className="text-[#D48B80] bg-[#281816] px-1.5 py-0.5 rounded font-semibold border border-[#442420]">
               -{stats.deletions} kata
             </span>
           </div>
         </div>
 
         {/* Mode Toggle Buttons: Words vs Lines */}
-        <div className="flex items-center gap-1 bg-slate-200/70 p-0.5 rounded-lg">
+        <div className="flex items-center gap-1 bg-[#0C1310] border border-[#1F3028] p-0.5 rounded-lg">
           <button
             type="button"
             onClick={() => setMode("words")}
             className={cn(
-              "px-2 py-0.5 rounded text-[11px] font-medium transition-colors flex items-center gap-1",
+              "px-2 py-0.5 rounded text-[11px] font-medium transition-colors flex items-center gap-1 cursor-pointer",
               mode === "words"
-                ? "bg-white text-slate-900 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-[#162620] text-[#EAF0EB] shadow-2xs"
+                : "text-[#8FA396] hover:text-[#EAF0EB]"
             )}
             title="Tampilkan perbedaan per kata"
           >
@@ -105,10 +105,10 @@ export function DiffView({
             type="button"
             onClick={() => setMode("lines")}
             className={cn(
-              "px-2 py-0.5 rounded text-[11px] font-medium transition-colors flex items-center gap-1",
+              "px-2 py-0.5 rounded text-[11px] font-medium transition-colors flex items-center gap-1 cursor-pointer",
               mode === "lines"
-                ? "bg-white text-slate-900 shadow-2xs"
-                : "text-slate-600 hover:text-slate-900"
+                ? "bg-[#162620] text-[#EAF0EB] shadow-2xs"
+                : "text-[#8FA396] hover:text-[#EAF0EB]"
             )}
             title="Tampilkan perbedaan per baris"
           >
@@ -120,13 +120,13 @@ export function DiffView({
 
       {/* Title Diff Banner if Changed */}
       {hasTitleChange && (
-        <div className="px-3 py-2 bg-amber-50/60 border-b border-amber-100 flex items-center gap-2 text-xs">
-          <span className="font-semibold text-slate-600 shrink-0">Judul:</span>
-          <span className="line-through text-rose-700 bg-rose-50 px-1.5 py-0.5 rounded border border-rose-200/60 truncate">
+        <div className="px-3 py-2 bg-[#15231D] border-b border-[#1F3028] flex items-center gap-2 text-xs">
+          <span className="font-semibold text-[#8FA396] shrink-0">Judul:</span>
+          <span className="line-through text-[#D48B80] bg-[#281816] px-1.5 py-0.5 rounded border border-[#442420] truncate">
             {beforeTitle}
           </span>
-          <span className="text-slate-400">→</span>
-          <span className="font-semibold text-emerald-800 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200/60 truncate">
+          <span className="text-[#586C61]">→</span>
+          <span className="font-semibold text-[#8EA690] bg-[#162720] px-1.5 py-0.5 rounded border border-[#243D31] truncate">
             {afterTitle}
           </span>
         </div>
@@ -135,13 +135,13 @@ export function DiffView({
       {/* Main Diff Content Container */}
       <div className={cn("overflow-y-auto p-3 font-sans leading-relaxed select-text", maxHeight)}>
         {mode === "words" ? (
-          <div className="whitespace-pre-wrap break-words text-slate-700">
+          <div className="whitespace-pre-wrap break-words text-[#8FA396]">
             {wordDiff.map((part, index) => {
               if (part.added) {
                 return (
                   <ins
                     key={index}
-                    className="bg-emerald-100/90 text-emerald-950 font-medium px-0.5 py-0.2 rounded border border-emerald-200 no-underline"
+                    className="bg-[#162720] text-[#8EA690] font-medium px-1 py-0.2 rounded border border-[#243D31] no-underline"
                   >
                     {part.value}
                   </ins>
@@ -151,7 +151,7 @@ export function DiffView({
                 return (
                   <del
                     key={index}
-                    className="bg-rose-100/90 text-rose-950 line-through decoration-rose-500/70 px-0.5 py-0.2 rounded border border-rose-200"
+                    className="bg-[#281816] text-[#D48B80] line-through decoration-[#D48B80]/70 px-1 py-0.2 rounded border border-[#442420]"
                   >
                     {part.value}
                   </del>
@@ -161,16 +161,16 @@ export function DiffView({
             })}
           </div>
         ) : (
-          <div className="font-mono text-[11px] leading-5 divide-y divide-slate-100">
+          <div className="font-mono text-[11px] leading-5 divide-y divide-[#1F3028]">
             {lineDiff.map((part, index) => {
               const lines = part.value.replace(/\n$/, "").split("\n");
               if (part.added) {
                 return lines.map((line, lineIdx) => (
                   <div
                     key={`${index}-${lineIdx}`}
-                    className="flex bg-emerald-50/80 text-emerald-950 border-l-2 border-emerald-500 px-2 py-0.5"
+                    className="flex bg-[#162720]/80 text-[#8EA690] border-l-2 border-[#8EA690] px-2 py-0.5"
                   >
-                    <span className="w-5 shrink-0 text-emerald-600 select-none font-bold">+</span>
+                    <span className="w-5 shrink-0 text-[#8EA690] select-none font-bold">+</span>
                     <span className="whitespace-pre-wrap break-words flex-1">{line || " "}</span>
                   </div>
                 ));
@@ -179,9 +179,9 @@ export function DiffView({
                 return lines.map((line, lineIdx) => (
                   <div
                     key={`${index}-${lineIdx}`}
-                    className="flex bg-rose-50/80 text-rose-950 border-l-2 border-rose-500 px-2 py-0.5 line-through decoration-rose-400"
+                    className="flex bg-[#281816]/80 text-[#D48B80] border-l-2 border-[#D48B80] px-2 py-0.5 line-through decoration-[#D48B80]/70"
                   >
-                    <span className="w-5 shrink-0 text-rose-600 select-none font-bold">-</span>
+                    <span className="w-5 shrink-0 text-[#D48B80] select-none font-bold">-</span>
                     <span className="whitespace-pre-wrap break-words flex-1">{line || " "}</span>
                   </div>
                 ));
@@ -189,9 +189,9 @@ export function DiffView({
               return lines.map((line, lineIdx) => (
                 <div
                   key={`${index}-${lineIdx}`}
-                  className="flex text-slate-600 hover:bg-slate-50 px-2 py-0.5"
+                  className="flex text-[#8FA396] hover:bg-[#121E19] px-2 py-0.5"
                 >
-                  <span className="w-5 shrink-0 text-slate-300 select-none"> </span>
+                  <span className="w-5 shrink-0 text-[#586C61] select-none"> </span>
                   <span className="whitespace-pre-wrap break-words flex-1">{line || " "}</span>
                 </div>
               ));
@@ -202,11 +202,11 @@ export function DiffView({
 
       {/* Diagram Mermaid Diff Collapsible Section */}
       {hasDiagramChange && (
-        <div className="border-t border-slate-200 bg-slate-50/70">
+        <div className="border-t border-[#1F3028] bg-[#121E19]">
           <button
             type="button"
             onClick={() => setIsDiagramExpanded(!isDiagramExpanded)}
-            className="w-full px-3 py-2 flex items-center justify-between text-xs text-indigo-700 hover:bg-slate-100 transition-colors"
+            className="w-full px-3 py-2 flex items-center justify-between text-xs text-[#8EA690] hover:bg-[#162620] transition-colors"
           >
             <div className="flex items-center gap-1.5 font-semibold">
               <Code2 className="w-3.5 h-3.5" />
@@ -220,25 +220,25 @@ export function DiffView({
           </button>
 
           {isDiagramExpanded && (
-            <div className="p-2 border-t border-slate-200 bg-slate-900 text-slate-200 font-mono text-[11px] overflow-x-auto max-h-48 leading-5">
+            <div className="p-2 border-t border-[#1F3028] bg-[#0C1310] text-[#EAF0EB] font-mono text-[11px] overflow-x-auto max-h-48 leading-5">
               {diagramLineDiff.map((part, idx) => {
                 const lines = part.value.replace(/\n$/, "").split("\n");
                 if (part.added) {
                   return lines.map((l, li) => (
-                    <div key={`${idx}-${li}`} className="text-emerald-400 bg-emerald-950/40 px-1">
+                    <div key={`${idx}-${li}`} className="text-[#8EA690] bg-[#162720] px-1">
                       + {l}
                     </div>
                   ));
                 }
                 if (part.removed) {
                   return lines.map((l, li) => (
-                    <div key={`${idx}-${li}`} className="text-rose-400 bg-rose-950/40 px-1 line-through">
+                    <div key={`${idx}-${li}`} className="text-[#D48B80] bg-[#281816] px-1 line-through">
                       - {l}
                     </div>
                   ));
                 }
                 return lines.map((l, li) => (
-                  <div key={`${idx}-${li}`} className="text-slate-400 px-1">
+                  <div key={`${idx}-${li}`} className="text-[#586C61] px-1">
                     &nbsp;&nbsp;{l}
                   </div>
                 ));

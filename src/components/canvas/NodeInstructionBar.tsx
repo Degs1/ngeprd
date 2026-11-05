@@ -6,7 +6,7 @@ import React, {
   useEffect,
   useCallback,
 } from "react";
-import { Sparkles, ArrowRight, CornerDownLeft, Loader2, RotateCcw } from "lucide-react";
+import { CornerDownLeft, Loader2, RotateCcw, MessageSquare } from "lucide-react";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import type { SectionType } from "@/lib/schemas/prd";
 import { cn } from "@/lib/utils";
@@ -76,7 +76,7 @@ export function NodeInstructionBar({
     ...(typeSpecificChips[sectionType] || []),
   ];
 
-  // Submit instruction to AI revision engine (FR-AI-01, FR-AI-02)
+  // Submit instruction to AI revision engine
   const handleSubmit = useCallback(
     async (textToSubmit?: string) => {
       const text = (textToSubmit ?? instruction).trim();
@@ -99,7 +99,7 @@ export function NodeInstructionBar({
     inputRef.current?.focus();
   };
 
-  // Shortcut: Tulis ulang (FR-AI-01)
+  // Shortcut: Tulis ulang
   const handleRewrite = () => {
     handleSubmit("Tulis ulang bagian ini secara menyeluruh");
   };
@@ -108,7 +108,7 @@ export function NodeInstructionBar({
     <div
       onClick={(e: any) => e.stopPropagation()}
       className={cn(
-        "nodrag nowheel w-[380px] max-w-[calc(100vw-32px)] bg-white/95 backdrop-blur-md border border-indigo-200/90 rounded-2xl p-2.5 sm:p-3 shadow-xl transition-all duration-200 z-50 select-none",
+        "nodrag nowheel w-[380px] max-w-[calc(100vw-32px)] bg-[#0E1713] border border-[#1C2E24] rounded-2xl p-2.5 sm:p-3 shadow-2xl transition-all duration-200 z-50 select-none text-[#EAF0EB]",
         className
       )}
     >
@@ -118,9 +118,9 @@ export function NodeInstructionBar({
           e.preventDefault();
           handleSubmit();
         }}
-        className="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-indigo-400/50 focus-within:border-indigo-400 bg-white"
+        className="flex items-center gap-1.5 bg-[#121E19] border border-[#22352B] rounded-xl px-2.5 py-1.5 focus-within:ring-1 focus-within:ring-[#8EA690] focus-within:border-[#8EA690]"
       >
-        <Sparkles className="w-3.5 h-3.5 text-indigo-600 shrink-0" />
+        <MessageSquare className="w-3.5 h-3.5 text-[#8EA690] shrink-0" />
         <input
           ref={inputRef}
           type="text"
@@ -130,14 +130,14 @@ export function NodeInstructionBar({
           disabled={isCreatingChangeSet}
           aria-label="Instruksi revisi AI"
           placeholder="Ubah bagian ini... (Enter kirim)"
-          className="flex-1 bg-transparent text-xs text-slate-900 placeholder:text-slate-400 focus:outline-none min-w-0"
+          className="flex-1 bg-transparent text-xs text-[#EAF0EB] placeholder:text-[#586C61] focus:outline-none min-w-0"
         />
 
         <button
           type="submit"
           disabled={!instruction.trim() || isCreatingChangeSet}
           aria-label="Kirim instruksi ke AI"
-          className="w-7 h-7 rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0 flex items-center justify-center cursor-pointer"
+          className="w-7 h-7 rounded-lg bg-[#8EA690] text-[#0C1310] hover:bg-[#7D967F] disabled:opacity-40 disabled:cursor-not-allowed transition-colors shrink-0 flex items-center justify-center cursor-pointer font-semibold"
           title="Kirim instruksi ke AI"
         >
           {isCreatingChangeSet ? (
@@ -148,14 +148,14 @@ export function NodeInstructionBar({
         </button>
       </form>
 
-      {/* Quick Prompt Chips (FR-AI-01, FR-AI-14) */}
+      {/* Quick Prompt Chips */}
       <div className="flex items-center gap-1.5 mt-2 overflow-x-auto pb-0.5 scrollbar-none">
         {/* Tulis Ulang shortcut chip */}
         <button
           type="button"
           onClick={handleRewrite}
           disabled={isCreatingChangeSet}
-          className="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200/70 hover:bg-indigo-100 active:bg-indigo-200 transition-colors flex items-center gap-1 cursor-pointer"
+          className="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-mono font-semibold bg-[#162720] text-[#8EA690] border border-[#243D31] hover:bg-[#1D332A] transition-colors flex items-center gap-1 cursor-pointer"
           title="Pintasan instruksi: Tulis ulang bagian ini secara menyeluruh"
         >
           <RotateCcw className="w-2.5 h-2.5" />
@@ -168,7 +168,7 @@ export function NodeInstructionBar({
             type="button"
             onClick={() => handleChipClick(chip)}
             disabled={isCreatingChangeSet}
-            className="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-medium bg-slate-100 text-slate-700 border border-slate-200/60 hover:bg-slate-200/70 active:bg-slate-200 hover:text-slate-900 transition-colors cursor-pointer"
+            className="shrink-0 px-2.5 py-1 rounded-lg text-[10px] font-medium bg-[#121E19] text-[#8FA396] border border-[#22352B] hover:bg-[#162620] hover:text-[#EAF0EB] transition-colors cursor-pointer"
           >
             {chip}
           </button>

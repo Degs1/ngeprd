@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   XCircle,
   RotateCcw,
-  Sparkles,
   AlertTriangle,
   AlertCircle,
   ArrowRight,
@@ -14,8 +13,6 @@ import {
   History,
   Check,
   X,
-  FileCheck2,
-  RefreshCw,
   Lightbulb,
 } from "lucide-react";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
@@ -97,7 +94,7 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
     }
   };
 
-  // Redirect handling (FR-AI-12)
+  // Redirect handling
   const handleApplyRedirect = () => {
     if (!changeSetRedirect) return;
     const targetSectionId = changeSetRedirect.sectionId;
@@ -126,33 +123,33 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
   // Empty State: No active changeset
   if (!activeChangeSet && !changeSetRedirect) {
     return (
-      <div className={cn("flex-1 p-6 flex flex-col items-center justify-center text-center", className)}>
-        <div className="w-12 h-12 rounded-2xl bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 mb-3 shadow-2xs">
+      <div className={cn("flex-1 p-6 flex flex-col items-center justify-center text-center text-[#8FA396] bg-[#101A16]", className)}>
+        <div className="w-12 h-12 rounded-2xl bg-[#162720] border border-[#243D31] flex items-center justify-center text-[#8EA690] mb-3 shadow-2xs">
           <GitPullRequest className="w-6 h-6" />
         </div>
-        <h3 className="text-sm font-bold text-slate-800">Tidak Ada Revisi Aktif</h3>
-        <p className="text-xs text-slate-500 mt-1.5 max-w-xs leading-relaxed">
+        <h3 className="text-sm font-serif font-bold text-[#EAF0EB]">Tidak Ada Revisi Aktif</h3>
+        <p className="text-xs text-[#8FA396] mt-1.5 max-w-xs leading-relaxed font-sans">
           Pilih salah satu bagian di kanvas untuk memunculkan bilah instruksi AI, atau gunakan chip cepat untuk mengajukan revisi.
         </p>
 
         {/* History preview if available */}
         {changeSetHistory.length > 0 && (
-          <div className="mt-8 w-full text-left border-t border-slate-100 pt-4">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 mb-2">
-              <History className="w-3.5 h-3.5 text-slate-400" />
+          <div className="mt-8 w-full text-left border-t border-[#1F3028] pt-4">
+            <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-[#8FA396] mb-2 uppercase tracking-wider">
+              <History className="w-3.5 h-3.5 text-[#586C61]" />
               <span>Riwayat Revisi ({changeSetHistory.length})</span>
             </div>
             <div className="space-y-1.5 max-h-48 overflow-y-auto">
               {changeSetHistory.slice(0, 5).map((cs) => (
                 <div
                   key={cs._id}
-                  className="px-2.5 py-2 rounded-xl border border-slate-100 bg-slate-50/80 text-xs flex items-center justify-between"
+                  className="px-2.5 py-2 rounded-xl border border-[#22352B] bg-[#121E19] text-xs flex items-center justify-between"
                 >
                   <div className="min-w-0 pr-2">
-                    <p className="font-semibold text-slate-800 truncate">
+                    <p className="font-medium text-[#EAF0EB] truncate">
                       &quot;{cs.instruction}&quot;
                     </p>
-                    <span className="text-[10px] text-slate-400 font-mono">
+                    <span className="text-[10px] text-[#586C61] font-mono">
                       {cs.items.length} section · {cs.status}
                     </span>
                   </div>
@@ -161,7 +158,7 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
                       type="button"
                       onClick={() => revertChangeSet(cs._id)}
                       disabled={isRevertingChangeSet}
-                      className="text-[11px] font-semibold text-rose-600 hover:text-rose-800 shrink-0 px-2 py-0.5 rounded bg-rose-50 border border-rose-200/60"
+                      className="text-[11px] font-semibold text-[#D48B80] hover:text-[#EAF0EB] shrink-0 px-2 py-0.5 rounded bg-[#281816] border border-[#442420] transition-colors"
                     >
                       Urungkan
                     </button>
@@ -176,53 +173,52 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
   }
 
   return (
-    <div className={cn("flex-1 flex flex-col min-h-0 bg-slate-50/40", className)}>
+    <div className={cn("flex-1 flex flex-col min-h-0 bg-[#101A16] text-[#EAF0EB]", className)}>
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
         {/* Instruction Header Card */}
         {activeChangeSet && (
-          <div className="p-3.5 rounded-2xl bg-white border border-slate-200 shadow-2xs space-y-2">
+          <div className="p-3.5 rounded-2xl bg-[#121E19] border border-[#22352B] shadow-xl space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-1.5 text-xs font-bold text-indigo-700">
-                <Sparkles className="w-3.5 h-3.5" />
-                <span>Instruksi Revisi AI</span>
+              <div className="flex items-center gap-1.5 text-xs font-mono font-semibold text-[#8EA690] uppercase tracking-wider">
+                <span>Instruksi Revisi</span>
               </div>
               <span
                 className={cn(
-                  "text-[10px] font-semibold uppercase px-2 py-0.5 rounded-full border",
-                  isGenerating && "bg-indigo-50 text-indigo-700 border-indigo-200 animate-pulse",
-                  isPending && "bg-amber-50 text-amber-800 border-amber-200",
-                  isApplied && "bg-emerald-50 text-emerald-800 border-emerald-200",
-                  isReverted && "bg-slate-100 text-slate-600 border-slate-200",
-                  isRejected && "bg-rose-50 text-rose-800 border-rose-200",
-                  isFailed && "bg-rose-50 text-rose-800 border-rose-200"
+                  "text-[10px] font-mono font-semibold uppercase px-2 py-0.5 rounded-full border",
+                  isGenerating && "bg-[#18262F] text-[#8CB4D9] border-[#243B4D] animate-pulse",
+                  isPending && "bg-[#262215] text-[#D4B36A] border-[#3D3520]",
+                  isApplied && "bg-[#152720] text-[#8EA690] border-[#243D31]",
+                  isReverted && "bg-[#162620] text-[#8FA396] border-[#22352B]",
+                  isRejected && "bg-[#281816] text-[#D48B80] border-[#442420]",
+                  isFailed && "bg-[#281816] text-[#D48B80] border-[#442420]"
                 )}
               >
                 {activeChangeSet.status}
               </span>
             </div>
 
-            <p className="text-xs font-semibold text-slate-900 bg-slate-50 p-2.5 rounded-xl border border-slate-100 italic">
+            <p className="text-xs font-medium text-[#EAF0EB] bg-[#0C1310] p-2.5 rounded-xl border border-[#1F3028] italic">
               &quot;{activeChangeSet.instruction}&quot;
             </p>
 
             {/* Rationale explanation if available */}
             {activeChangeSet.rationale && (
-              <p className="text-[11px] text-slate-600 leading-normal">
+              <p className="text-[11px] text-[#8FA396] leading-normal">
                 {activeChangeSet.rationale}
               </p>
             )}
           </div>
         )}
 
-        {/* Redirect Suggestion Banner (FR-AI-12) */}
+        {/* Redirect Suggestion Banner */}
         {changeSetRedirect && (
-          <div className="p-3.5 rounded-2xl bg-sky-50 border border-sky-200 text-xs shadow-2xs space-y-2">
-            <div className="flex items-center gap-1.5 font-bold text-sky-900">
-              <Lightbulb className="w-4 h-4 text-sky-600 shrink-0" />
+          <div className="p-3.5 rounded-2xl bg-[#18262F] border border-[#243B4D] text-xs shadow-2xs space-y-2 text-[#8CB4D9]">
+            <div className="flex items-center gap-1.5 font-bold">
+              <Lightbulb className="w-4 h-4 shrink-0" />
               <span>Saran Pengalihan (Redirect)</span>
             </div>
-            <p className="text-sky-800 leading-normal">
+            <p className="leading-normal text-[#EAF0EB]">
               Instruksi ini terdeteksi lebih relevan untuk bagian lain: &quot;
               {changeSetRedirect.reason}&quot;.
             </p>
@@ -230,14 +226,14 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
               <button
                 type="button"
                 onClick={clearChangeSetRedirect}
-                className="px-2.5 py-1 text-slate-600 hover:bg-sky-100 rounded-lg font-medium text-xs cursor-pointer"
+                className="px-2.5 py-1 text-[#8CB4D9] hover:bg-[#243B4D] rounded-lg font-medium text-xs cursor-pointer"
               >
                 Tutup
               </button>
               <button
                 type="button"
                 onClick={handleApplyRedirect}
-                className="px-3 py-1 bg-sky-600 hover:bg-sky-700 text-white font-semibold rounded-lg shadow-2xs text-xs flex items-center gap-1 cursor-pointer"
+                className="px-3 py-1 bg-[#8CB4D9] hover:bg-[#72A0CC] text-[#0C1310] font-semibold rounded-lg shadow-2xs text-xs flex items-center gap-1 cursor-pointer"
               >
                 <span>Terapkan ke Section Relevan</span>
                 <ArrowRight className="w-3.5 h-3.5" />
@@ -246,12 +242,12 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
           </div>
         )}
 
-        {/* Stream Progress Indicator (FR-AI-02) */}
+        {/* Stream Progress Indicator */}
         {isGenerating && (
-          <div className="p-3.5 rounded-2xl bg-white border border-indigo-200 shadow-2xs space-y-2">
+          <div className="p-3.5 rounded-2xl bg-[#121E19] border border-[#22352B] shadow-xl space-y-2">
             <div className="flex items-center justify-between text-xs">
-              <div className="flex items-center gap-2 font-semibold text-indigo-700">
-                <Loader2 className="w-4 h-4 animate-spin text-indigo-600" />
+              <div className="flex items-center gap-2 font-mono font-medium text-[#8CB4D9]">
+                <Loader2 className="w-4 h-4 animate-spin" />
                 <span>
                   {changeSetProgress.message ||
                     (changeSetProgress.step === "analyzing"
@@ -260,7 +256,7 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
                 </span>
               </div>
               {changeSetProgress.total > 0 && (
-                <span className="font-mono text-xs font-bold text-indigo-900">
+                <span className="font-mono text-xs font-bold text-[#EAF0EB]">
                   {changeSetProgress.current}/{changeSetProgress.total}
                 </span>
               )}
@@ -282,10 +278,10 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
               aria-valuemin={0}
               aria-valuemax={100}
               aria-label="Progres revisi AI"
-              className="w-full bg-indigo-50 h-2 rounded-full overflow-hidden border border-indigo-100"
+              className="w-full bg-[#0C1310] h-2 rounded-full overflow-hidden border border-[#1F3028]"
             >
               <div
-                className="bg-indigo-600 h-full transition-all duration-300 rounded-full"
+                className="bg-[#8EA690] h-full transition-all duration-300 rounded-full"
                 style={{
                   width: `${
                     changeSetProgress.total > 0
@@ -303,14 +299,14 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
           </div>
         )}
 
-        {/* Warnings Banner (FR-AI-10) */}
+        {/* Warnings Banner */}
         {activeChangeSet?.warnings && activeChangeSet.warnings.length > 0 && (
-          <div className="p-3.5 rounded-2xl bg-amber-50/90 border border-amber-200 text-xs shadow-2xs space-y-1.5">
-            <div className="flex items-center gap-1.5 font-bold text-amber-900">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+          <div className="p-3.5 rounded-2xl bg-[#262215] border border-[#3D3520] text-xs shadow-2xs space-y-1.5 text-[#D4B36A]">
+            <div className="flex items-center gap-1.5 font-bold">
+              <AlertTriangle className="w-4 h-4 shrink-0" />
               <span>Peringatan Dampak AI</span>
             </div>
-            <ul className="list-disc list-inside space-y-1 text-amber-800 text-[11px] leading-relaxed">
+            <ul className="list-disc list-inside space-y-1 text-[11px] leading-relaxed text-[#8FA396]">
               {activeChangeSet.warnings.map((warn, i) => (
                 <li key={i}>{warn}</li>
               ))}
@@ -318,26 +314,25 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
           </div>
         )}
 
-        {/* Key Decisions Changes Banner (FR-AI-07, PRD 8.2) */}
+        {/* Key Decisions Changes Banner */}
         {activeChangeSet?.keyDecisionChanges &&
           activeChangeSet.keyDecisionChanges.length > 0 && (
-            <div className="p-3.5 rounded-2xl bg-purple-50/70 border border-purple-200 text-xs shadow-2xs space-y-2">
-              <div className="flex items-center gap-1.5 font-bold text-purple-900">
-                <Sparkles className="w-4 h-4 text-purple-600 shrink-0" />
+            <div className="p-3.5 rounded-2xl bg-[#121E19] border border-[#22352B] text-xs shadow-2xs space-y-2">
+              <div className="flex items-center gap-1.5 font-mono font-semibold text-[#8EA690] uppercase tracking-wider">
                 <span>Perubahan Keputusan Kunci</span>
               </div>
               <div className="space-y-1.5">
                 {activeChangeSet.keyDecisionChanges.map((dec, i) => (
                   <div
                     key={i}
-                    className="p-2 rounded-xl bg-white border border-purple-100 text-[11px] space-y-0.5"
+                    className="p-2 rounded-xl bg-[#0C1310] border border-[#1F3028] text-[11px] space-y-0.5"
                   >
                     {dec.before && (
-                      <div className="text-rose-700 line-through truncate">
+                      <div className="text-[#D48B80] line-through truncate font-mono">
                         - {dec.before}
                       </div>
                     )}
-                    <div className="font-semibold text-emerald-800 truncate">
+                    <div className="font-semibold text-[#8EA690] truncate font-mono">
                       + {dec.after}
                     </div>
                   </div>
@@ -346,17 +341,17 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
             </div>
           )}
 
-        {/* Version Conflict Alert (FR-AI-06: 409 Conflict) */}
+        {/* Version Conflict Alert */}
         {changeSetConflicts && changeSetConflicts.length > 0 && (
-          <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-300 text-xs shadow-2xs space-y-2">
-            <div className="flex items-center gap-1.5 font-bold text-rose-900">
-              <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+          <div className="p-3.5 rounded-2xl bg-[#281816] border border-[#442420] text-xs shadow-2xs space-y-2 text-[#D48B80]">
+            <div className="flex items-center gap-1.5 font-bold">
+              <AlertCircle className="w-4 h-4 shrink-0" />
               <span>Konflik Versi Terdeteksi</span>
             </div>
-            <p className="text-rose-800 leading-normal text-[11px]">
+            <p className="leading-normal text-[11px] text-[#8FA396]">
               Beberapa section telah mengalami modifikasi sejak change set ini dibuat:
             </p>
-            <ul className="list-disc list-inside text-rose-900 font-mono text-[11px] space-y-0.5">
+            <ul className="list-disc list-inside font-mono text-[11px] space-y-0.5 text-[#EAF0EB]">
               {changeSetConflicts.map((c) => (
                 <li key={c.sectionId}>
                   Section {sectionNumberMap.get(c.sectionId) || c.sectionId} (base rev:{" "}
@@ -368,7 +363,7 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
               <button
                 type="button"
                 onClick={clearChangeSetError}
-                className="px-2.5 py-1 text-slate-600 hover:bg-rose-100 rounded-lg text-xs font-medium cursor-pointer"
+                className="px-2.5 py-1 text-[#8FA396] hover:bg-[#38201E] rounded-lg text-xs font-medium cursor-pointer"
               >
                 Abaikan
               </button>
@@ -381,7 +376,7 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
                       activeChangeSet.instruction
                     )
                   }
-                  className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white font-semibold rounded-lg text-xs shadow-2xs cursor-pointer"
+                  className="px-3 py-1 bg-[#D48B80] hover:bg-[#C0776D] text-[#0C1310] font-semibold rounded-lg text-xs shadow-2xs cursor-pointer"
                 >
                   Buat Ulang dari Versi Terbaru
                 </button>
@@ -392,18 +387,18 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
 
         {/* Generic Error Banner */}
         {changeSetError && !changeSetConflicts && (
-          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex items-start gap-2 shadow-2xs">
-            <AlertCircle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <div className="p-3 rounded-2xl bg-[#281816] border border-[#442420] text-xs text-[#D48B80] flex items-start gap-2 shadow-2xs">
+            <AlertCircle className="w-4 h-4 text-[#D48B80] shrink-0 mt-0.5" />
             <div className="flex-1 min-w-0">
-              <p className="font-semibold text-rose-900">Terjadi Kesalahan</p>
-              <p className="text-[11px] text-rose-700 mt-0.5 leading-normal">
+              <p className="font-semibold text-[#EAF0EB]">Terjadi Kesalahan</p>
+              <p className="text-[11px] text-[#D48B80] mt-0.5 leading-normal">
                 {changeSetError}
               </p>
             </div>
             <button
               type="button"
               onClick={clearChangeSetError}
-              className="text-slate-400 hover:text-slate-600 p-0.5 cursor-pointer"
+              className="text-[#8FA396] hover:text-[#EAF0EB] p-0.5 cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -412,8 +407,8 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
 
         {/* Success message banner */}
         {applyResultMsg && (
-          <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-800 flex items-center gap-2 shadow-2xs">
-            <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <div className="p-3 rounded-2xl bg-[#152720] border border-[#243D31] text-xs text-[#8EA690] flex items-center gap-2 shadow-2xs">
+            <CheckCircle2 className="w-4 h-4 shrink-0" />
             <span className="font-medium text-[11px]">{applyResultMsg}</span>
           </div>
         )}
@@ -421,16 +416,16 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
         {/* List of ChangeItemCards */}
         {sortedItems.length > 0 && (
           <div className="space-y-2">
-            <div className="flex items-center justify-between text-xs font-bold text-slate-700 px-1 pt-1">
+            <div className="flex items-center justify-between text-xs font-mono font-semibold text-[#8FA396] px-1 pt-1">
               <span>
                 Daftar Perubahan ({selectedCount}/{sortedItems.length} dipilih)
               </span>
               {isPending && (
-                <div className="flex items-center gap-2 text-[11px] font-normal text-slate-500">
+                <div className="flex items-center gap-2 text-[11px] font-normal text-[#586C61]">
                   <button
                     type="button"
                     onClick={selectAllChangeItems}
-                    className="text-indigo-600 hover:underline cursor-pointer"
+                    className="text-[#8EA690] hover:underline cursor-pointer"
                   >
                     Pilih Semua
                   </button>
@@ -438,7 +433,7 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
                   <button
                     type="button"
                     onClick={deselectImpactedChangeItems}
-                    className="text-slate-500 hover:underline cursor-pointer"
+                    className="text-[#8FA396] hover:underline cursor-pointer"
                   >
                     Hanya Origin
                   </button>
@@ -463,7 +458,7 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
       </div>
 
       {/* Sticky Action Footer */}
-      <div className="p-3 bg-white border-t border-slate-200 shrink-0 shadow-xs z-10">
+      <div className="p-3 bg-[#101A16] border-t border-[#1F3028] shrink-0 shadow-xs z-10">
         {isPending && (
           <div className="flex flex-col gap-2">
             <div className="flex flex-col sm:flex-row items-stretch gap-2">
@@ -472,7 +467,7 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
                 type="button"
                 onClick={handleApplyAll}
                 disabled={isApplyingChangeSet}
-                className="flex-1 py-2.5 px-3 min-h-[38px] bg-indigo-600 hover:bg-indigo-700 active:scale-98 disabled:bg-indigo-400 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 py-2.5 px-3 min-h-[38px] bg-[#8EA690] hover:bg-[#7D967F] active:scale-98 disabled:opacity-50 text-[#0C1310] rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 {isApplyingChangeSet ? (
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -487,7 +482,7 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
                 type="button"
                 onClick={handleApplySelected}
                 disabled={isApplyingChangeSet || selectedCount === 0}
-                className="flex-1 py-2.5 px-3 min-h-[38px] bg-white hover:bg-slate-50 active:bg-slate-100 border border-slate-200 text-slate-800 disabled:opacity-50 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+                className="flex-1 py-2.5 px-3 min-h-[38px] bg-[#162620] hover:bg-[#1D3028] active:bg-[#121E19] border border-[#243D31] text-[#8EA690] disabled:opacity-50 rounded-xl text-xs font-semibold transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
               >
                 <span>Terima Terpilih ({selectedCount})</span>
               </button>
@@ -498,7 +493,7 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
               type="button"
               onClick={handleReject}
               disabled={isApplyingChangeSet}
-              className="w-full py-2 px-3 min-h-[36px] bg-slate-100 hover:bg-rose-50 hover:text-rose-700 text-slate-600 active:bg-rose-100 rounded-xl text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
+              className="w-full py-2 px-3 min-h-[36px] bg-[#121E19] hover:bg-[#281816] text-[#8FA396] hover:text-[#D48B80] border border-[#22352B] rounded-xl text-xs font-medium transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
               <span>Tolak Change Set</span>
@@ -508,16 +503,16 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
 
         {isApplied && (
           <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-800">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+            <div className="flex items-center gap-1.5 text-xs font-semibold text-[#8EA690]">
+              <CheckCircle2 className="w-4 h-4 text-[#8EA690]" />
               <span>Perubahan telah diterapkan</span>
             </div>
-            {/* Urungkan (FR-AI-08) */}
+            {/* Urungkan */}
             <button
               type="button"
               onClick={handleRevert}
               disabled={isRevertingChangeSet}
-              className="py-1.5 px-3 bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              className="py-1.5 px-3 bg-[#281816] hover:bg-[#38201E] border border-[#442420] text-[#D48B80] font-semibold text-xs rounded-xl transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
             >
               {isRevertingChangeSet ? (
                 <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -530,14 +525,14 @@ export function RevisionPanel({ className, onSelectSection }: RevisionPanelProps
         )}
 
         {isReverted && (
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 justify-center py-1">
-            <RotateCcw className="w-3.5 h-3.5 text-slate-400" />
+          <div className="flex items-center gap-1.5 text-xs text-[#586C61] justify-center py-1">
+            <RotateCcw className="w-3.5 h-3.5" />
             <span>Change set telah diurungkan</span>
           </div>
         )}
 
         {isRejected && (
-          <div className="flex items-center gap-1.5 text-xs text-rose-600 justify-center py-1">
+          <div className="flex items-center gap-1.5 text-xs text-[#D48B80] justify-center py-1">
             <XCircle className="w-3.5 h-3.5" />
             <span>Change set ditolak</span>
           </div>
