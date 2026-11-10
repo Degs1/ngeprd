@@ -7,6 +7,14 @@ export const COLLECTIONS = {
   PRD_DOCUMENTS: "prd_documents",
   PRD_CHANGESETS: "prd_changesets",
   USER_USAGE: "user_daily_usage",
+  AI_JOBS: "ai_jobs",
+  AI_TASKS: "ai_tasks",
+  AI_EVENTS: "ai_events",
+  AI_PROVIDERS: "ai_providers",
+  AI_ACCOUNTS: "ai_accounts",
+  AI_RESERVATIONS: "ai_reservations",
+  AI_USAGE: "ai_usage",
+  AI_RATE_BUCKETS: "ai_rate_buckets",
 } as const;
 
 export interface UserDailyUsageDoc {

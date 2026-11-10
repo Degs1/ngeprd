@@ -91,6 +91,7 @@ export const PrdDocumentSchema = z.object({
   ownerId: z.string().min(1),
   title: z.string().min(1),
   titleEdited: z.boolean().default(false),
+  titleRev: z.number().int().positive().optional(),
   idea: z.string().min(1),
   lang: z.enum(["id", "en"]).default("id"),
   status: PrdStatusSchema.default("brainstorming"),
@@ -141,6 +142,7 @@ export type CreatePrdInput = z.infer<typeof CreatePrdSchema>;
 
 export const UpdatePrdTitleSchema = z.object({
   title: z.string().trim().min(1, "Title must not be empty").max(200),
+  baseRev: z.number().int().positive().optional(),
 });
 export type UpdatePrdTitleInput = z.infer<typeof UpdatePrdTitleSchema>;
 
@@ -164,9 +166,9 @@ export type AddSectionInput = z.infer<typeof AddSectionSchema>;
 
 export const UpdateSectionSchema = z.object({
   baseRev: z.number().int().nonnegative("baseRev is required and must be non-negative"),
-  title: z.string().trim().min(1).optional(),
-  content: z.string().optional(),
-  diagram: DiagramSchema.optional(),
+  title: z.string().trim().min(1).max(200).optional(),
+  content: z.string().max(200000).optional(),
+  diagram: DiagramSchema.extend({ code: z.string().max(8192) }).optional(),
 });
 export type UpdateSectionInput = z.infer<typeof UpdateSectionSchema>;
 

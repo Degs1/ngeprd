@@ -1,108 +1,26 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { getAuthContext } from "@/lib/auth/owner";
-import { getPrdById, saveBrainstormQuestions } from "@/lib/db/prdRepository";
-import { runBrainstormer } from "@/lib/agent/brainstormer";
-import { AiError } from "@/lib/ai/generateJson";
+import { getPrdById } from "@/lib/db/prdRepository";
+import { createJob } from "@/lib/jobs/repository";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-interface RouteParams {
-  params: Promise<{ id: string }> | { id: string };
-}
-
-/**
- * POST /api/prds/[id]/brainstorm
- * Idempotent:
- * - If brainstorm questions already exist, returns them immediately.
- * - Otherwise, invokes the Brainstormer agent to generate domain-specific questions,
- *   saves them to the PRD document in MongoDB, and returns them.
- * - On AI failure, returns structured error (NO fallback templates).
- */
-export async function POST(req: NextRequest, context: RouteParams) {
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> | { id: string } }) {
+  if (process.env.AI_JOB_SUBMISSIONS_ENABLED === "false") return NextResponse.json({ error: { code: "SUBMISSIONS_PAUSED" } }, { status: 503 });
   const { id } = await Promise.resolve(context.params);
+  const auth = await getAuthContext(req.headers.get("x-owner-id") || undefined);
+  const prd = await getPrdById(id, auth.ownerId);
+  if (!prd) return NextResponse.json({ error: { code: "NOT_FOUND" } }, { status: 404 });
+  if (prd.brainstorm.questions.length) return NextResponse.json({ questions: prd.brainstorm.questions, lang: prd.lang, state: "waiting_user" });
   try {
-    const explicitId = req.headers.get("x-owner-id") || undefined;
-    const authCtx = await getAuthContext(explicitId);
-    const ownerId = authCtx.ownerId;
-    const prd = await getPrdById(id, ownerId);
-    
-    if (!prd) {
-      return NextResponse.json(
-        { error: { code: "NOT_FOUND", message: "Dokumen PRD tidak ditemukan" } },
-        { status: 404 }
-      );
-    }
-
-    // Idempotency: Return existing questions if already generated
-    if (prd.brainstorm?.questions && prd.brainstorm.questions.length > 0) {
-      return NextResponse.json({
-        questions: prd.brainstorm.questions,
-        lang: prd.lang || "id",
-      });
-    }
-
-    // Generate questions using Brainstormer agent
-    const result = await runBrainstormer({
-      idea: prd.idea,
-      docId: prd._id.toString(),
-    });
-
-    // Save to database
-    const updated = await saveBrainstormQuestions(
-      prd._id,
-      ownerId,
-      result.questions,
-      result.lang
-    );
-
-    if (!updated) {
-      return NextResponse.json(
-        {
-          error: {
-            code: "SAVE_FAILED",
-            message: "Gagal menyimpan pertanyaan brainstorming ke database",
-          },
-        },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({
-      questions: result.questions,
-      lang: result.lang,
-    });
-  } catch (err: unknown) {
-    if (err instanceof AiError) {
-      const statusCode =
-        err.code === "AI_TIMEOUT"
-          ? 504
-          : err.code === "AI_AUTH_ERROR"
-          ? 401
-          : 502;
-
-      return NextResponse.json(
-        {
-          error: {
-            code: err.code,
-            message: err.message,
-            stage: err.stage,
-          },
-        },
-        { status: statusCode }
-      );
-    }
-
-    console.error(`POST /api/prds/${id}/brainstorm failed:`, err);
-    return NextResponse.json(
-      {
-        error: {
-          code: "INTERNAL_ERROR",
-          message:
-            err instanceof Error ? err.message : "Terjadi kesalahan internal",
-        },
-      },
-      { status: 500 }
-    );
+    const submissionId = req.headers.get("idempotency-key") || randomUUID();
+    const job = await createJob({ ownerId: auth.ownerId, prdId: prd._id, kind: "brainstorm", submissionId });
+    return NextResponse.json({ jobId: job._id.toString(), state: job.state, statusUrl: `/api/prds/${id}/jobs/${job._id}` }, { status: 202 });
+  } catch (error: any) {
+    if (error?.message === "ACTIVE_JOB_LIMIT") return NextResponse.json({ error: { code: "ACTIVE_JOB_LIMIT" } }, { status: 409 });
+    if (error?.message === "SUBMISSION_ID_CONFLICT") return NextResponse.json({ error: { code: "SUBMISSION_ID_CONFLICT" } }, { status: 409 });
+    throw error;
   }
 }

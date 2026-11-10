@@ -41,6 +41,9 @@ export default function PrdWorkspacePage() {
   const error = useWorkspaceStore((state) => state.error);
   const loadPrd = useWorkspaceStore((state) => state.loadPrd);
   const isGenerating = useWorkspaceStore((state) => state.isGenerating);
+  const jobState = useWorkspaceStore((state) => state.jobState);
+  const jobStage = useWorkspaceStore((state) => state.jobStage);
+  const jobReason = useWorkspaceStore((state) => state.jobReason);
   const generationProgress = useWorkspaceStore((state) => state.generationProgress);
   const startGeneration = useWorkspaceStore((state) => state.startGeneration);
   const cancelGeneration = useWorkspaceStore((state) => state.cancelGeneration);
@@ -76,18 +79,11 @@ export default function PrdWorkspacePage() {
     }
   }, [document?.title]);
 
-  // Auto-connect SSE generator if document is in generating status upon load
-  useEffect(() => {
-    if (document && document.status === "generating" && !isGenerating) {
-      startGeneration();
-    }
-  }, [document?.status, isGenerating, startGeneration]);
-
   const handleSaveTitle = async () => {
     if (!document || !editedTitle.trim() || isSavingTitle) return;
     setIsSavingTitle(true);
     try {
-      const ok = await renamePrd(document._id.toString(), editedTitle.trim());
+      const ok = await renamePrd(document._id.toString(), editedTitle.trim(), document.titleRev || 1);
       if (ok) {
         setIsEditingTitle(false);
       }
@@ -289,6 +285,10 @@ export default function PrdWorkspacePage() {
 
             <div className="shrink-0 hidden xxs:block">
               <StatusChip status={document.status} size="sm" />
+              {jobState && <span title={jobReason || undefined} className="ml-2 text-[10px] text-[#8EA690]">
+                {jobState === "running" ? ({ planner: "Merencanakan", section: "Menulis bagian", diagram: "Membuat diagram" }[jobStage || ""] || "Memproses") :
+                  ({ queued: "Antrean", waiting_capacity: "Menunggu kapasitas", retry_scheduled: "Menjadwalkan ulang", blocked: "Terblokir", completed: "Selesai", failed: "Gagal", cancelled: "Dibatalkan" }[jobState] || jobState)}
+              </span>}
             </div>
 
             {/* Section Progress Counter */}
@@ -321,7 +321,7 @@ export default function PrdWorkspacePage() {
                 </button>
               </div>
             ) : (
-              document.status === "failed" && (
+              (document.status === "failed" || jobState === "blocked" || jobState === "failed") && (
                 <button
                   type="button"
                   onClick={handleStartGeneration}
@@ -329,7 +329,7 @@ export default function PrdWorkspacePage() {
                   className="px-2.5 sm:px-3 py-1.5 text-xs font-semibold text-[#D48B80] bg-[#281816] hover:bg-[#38201E] border border-[#442420] rounded-xl transition-colors flex items-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                 >
                   <RotateCcw className="w-3.5 h-3.5" />
-                  <span className="hidden sm:inline">Lanjutkan</span>
+                  <span className="hidden sm:inline">Coba Lagi</span>
                 </button>
               )
             )}
@@ -390,14 +390,17 @@ export default function PrdWorkspacePage() {
           </div>
         </header>
 
-        {/* Failure Banner if Document Failed */}
-        {!isGenerating && document.status === "failed" && (
+        {/* Failure / Blocked Banner */}
+        {!isGenerating && (document.status === "failed" || jobState === "blocked" || jobState === "failed") && (
           <div className="bg-[#281816] border-b border-[#442420] px-3 sm:px-4 py-2 flex items-center justify-between text-xs text-[#D48B80] shrink-0">
             <div className="flex items-center gap-2 min-w-0">
               <AlertCircle className="w-4 h-4 text-[#D48B80] shrink-0" />
               <span className="truncate">
-                {document.lastError?.message ||
-                  "Proses terhenti sebelum semua section selesai."}
+                {jobReason ||
+                  document.lastError?.message ||
+                  (jobState === "blocked"
+                    ? "Generasi terblokir: kapasitas provider AI tidak tersedia."
+                    : "Proses terhenti sebelum semua section selesai.")}
               </span>
             </div>
             <button

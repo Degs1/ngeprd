@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/owner";
 import { updateSection, deleteSection } from "@/lib/db/prdRepository";
 import { UpdateSectionSchema } from "@/lib/schemas/prd";
+import { getDb } from "@/lib/db/mongo";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,13 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
     const explicitId = req.headers.get("x-owner-id") || undefined;
     const authCtx = await getAuthContext(explicitId);
     const ownerId = authCtx.ownerId;
+    const db = await getDb();
+    const minute = Math.floor(Date.now() / 60000);
+    const bucket = await db.collection<{ _id: string; count: number; expiresAt: Date }>("edit_rate_buckets")
+      .findOneAndUpdate({ _id: `${ownerId}:${minute}` },
+        { $inc: { count: 1 }, $setOnInsert: { expiresAt: new Date((minute + 2) * 60000) } },
+        { upsert: true, returnDocument: "after" });
+    if ((bucket?.count || 0) > 120) return NextResponse.json({ error: { code: "RATE_LIMIT" } }, { status: 429 });
     const body = await req.json().catch(() => null);
 
     const parsed = UpdateSectionSchema.safeParse(body);

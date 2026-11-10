@@ -1,58 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/owner";
-import {
-  getPrdById,
-  releaseExecutionLock,
-  resetWritingSectionsToPending,
-} from "@/lib/db/prdRepository";
-import { cancelJob } from "@/lib/agent/jobRegistry";
+import { cancelJob } from "@/lib/jobs/repository";
+import { getPrdById } from "@/lib/db/prdRepository";
+import { COLLECTIONS, getDb } from "@/lib/db/mongo";
 
 export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
-
-interface RouteParams {
-  params: Promise<{ id: string }> | { id: string };
-}
-
-/**
- * POST /api/prds/[id]/cancel
- * Explicitly terminates an active generation background job, resets any 'writing'
- * sections back to 'pending', and releases the document execution lock.
- */
-export async function POST(req: NextRequest, context: RouteParams) {
-  const { id: prdId } = await Promise.resolve(context.params);
-  try {
-    const explicitId = req.headers.get("x-owner-id") || undefined;
-    const authCtx = await getAuthContext(explicitId);
-    const ownerId = authCtx.ownerId;
-
-    // 1. Cancel in server active job registry (signals AbortController)
-    const cancelled = cancelJob(prdId, "Generasi dibatalkan oleh pengguna");
-
-    // 2. Reset any in-flight writing sections in MongoDB
-    await resetWritingSectionsToPending(prdId, ownerId).catch(() => {});
-
-    // 3. Release lock if still marked as generating in MongoDB
-    const prd = await getPrdById(prdId, ownerId);
-    if (prd && prd.status === "generating") {
-      const readySections = (prd.sections || []).filter((s) => s.status === "ready").length;
-      const finalStatus = readySections > 0 ? "ready" : "brainstorming";
-      const runId = prd.run?.id || "manual_cancel";
-      await releaseExecutionLock(prdId, runId, finalStatus).catch(() => {});
+export async function POST(req: NextRequest, context: { params: Promise<{ id: string }> | { id: string } }) {
+  const { id } = await Promise.resolve(context.params);
+  const auth = await getAuthContext(req.headers.get("x-owner-id") || undefined);
+  const cancelled = await cancelJob(id, auth.ownerId);
+  if (cancelled) {
+    const doc = await getPrdById(id, auth.ownerId);
+    if (doc) {
+      const db = await getDb();
+      await db.collection(COLLECTIONS.PRD_DOCUMENTS).updateOne({ _id: doc._id, ownerId: auth.ownerId },
+        { $set: { status: doc.sections.some((s) => s.status === "ready") ? "ready" : "brainstorming" } });
     }
-
-    return NextResponse.json({
-      success: true,
-      cancelled,
-      message: cancelled
-        ? "Proses generasi PRD berhasil dibatalkan."
-        : "Tidak ada proses generasi aktif yang sedang berjalan.",
-    });
-  } catch (err) {
-    console.error(`POST /api/prds/${prdId}/cancel failed:`, err);
-    return NextResponse.json(
-      { error: { code: "INTERNAL", message: "Gagal membatalkan proses generasi" } },
-      { status: 500 }
-    );
   }
+  return NextResponse.json({ success: true, cancelled });
 }

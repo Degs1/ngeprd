@@ -52,6 +52,7 @@ export async function createPrd(
     ownerId,
     title: defaultTitle,
     titleEdited: false,
+    titleRev: 1,
     idea: trimmedIdea,
     lang: input.lang || "id",
     status: "brainstorming",
@@ -121,20 +122,28 @@ export async function getPrdById(
 export async function updatePrdTitle(
   id: string | ObjectId,
   ownerId: string,
-  title: string
+  title: string,
+  baseRev?: number
 ): Promise<PrdDocument | null> {
   const oid = toObjectId(id);
   if (!oid) return null;
 
   const col = await getPrdCollection();
+  if (baseRev === 1) {
+    const legacy = await col.findOneAndUpdate({ _id: oid, ownerId, titleRev: { $exists: false } },
+      { $set: { title: title.trim(), titleEdited: true, titleRev: 2, updatedAt: new Date() } },
+      { returnDocument: "after" });
+    if (legacy) return legacy;
+  }
   const result = await col.findOneAndUpdate(
-    { _id: oid, ownerId },
+    { _id: oid, ownerId, ...(baseRev ? { titleRev: baseRev } : {}) },
     {
       $set: {
         title: title.trim(),
         titleEdited: true,
         updatedAt: new Date(),
       },
+      $inc: { titleRev: 1 },
     },
     { returnDocument: "after" }
   );
@@ -286,6 +295,7 @@ export async function updateSection(
   }
   if (updates.content !== undefined) {
     setOps["sections.$[s].content"] = updates.content;
+    setOps["sections.$[s].status"] = "ready";
   }
   if (updates.diagram !== undefined) {
     setOps["sections.$[s].diagram"] = updates.diagram;
@@ -695,7 +705,7 @@ export async function upsertBrainstormAnswer(
 
   // If not found, push new answer
   const pushNew = await col.findOneAndUpdate(
-    { _id: oid, ownerId },
+    { _id: oid, ownerId, "brainstorm.answers": { $not: { $elemMatch: { questionId: answer.questionId } } } },
     {
       $push: { "brainstorm.answers": answer },
       $set: { updatedAt: now },
@@ -703,7 +713,7 @@ export async function upsertBrainstormAnswer(
     { returnDocument: "after" }
   );
 
-  return pushNew || null;
+  return pushNew || col.findOne({ _id: oid, ownerId });
 }
 
 /**

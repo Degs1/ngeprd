@@ -136,12 +136,14 @@ export function getAiClient() {
   const baseURL =
     process.env.AI_BASE_URL ||
     process.env.OPENAI_BASE_URL ||
-    "http://127.0.0.1:20128/v1";
+    "";
 
   const apiKey =
     process.env.AI_API_KEY ||
     process.env.OPENAI_API_KEY ||
-    "sk-035aa783d373c298-t4mmyi-35d0e9a7";
+    "";
+
+  if (!baseURL || !apiKey) throw new Error("Legacy AI client is not configured");
 
   return createOpenAI({
     baseURL,

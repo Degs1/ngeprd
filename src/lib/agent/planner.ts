@@ -105,10 +105,10 @@ export const PlannerAiOutputSchema = z
     });
 
     const totalSections = allSections.length;
-    if (totalSections < 8 || totalSections > 14) {
+    if (totalSections !== 11) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: `Total sections across all chapters must be between 8 and 14 (got ${totalSections})`,
+        message: `Total sections across all chapters must be exactly 11 (got ${totalSections})`,
         path: ["chapters"],
       });
     }
@@ -154,7 +154,7 @@ STRICT RULES:
 2. Return ONLY a valid JSON object matching the exact schema below. No conversational preamble, no markdown formatting outside JSON.
 3. Structure requirements:
    - Exactly 3 to 5 chapters total.
-   - Exactly 8 to 14 sections total across all chapters (each chapter must have at least 1 section). Target 10-12 sections.
+   - Exactly 11 sections total across all chapters (each chapter must have at least 1 section). The JSON example below shows fields, not the required count.
    - The first chapter's first section MUST have type "overview".
    - MUST include sections with types: "overview", "problem", "users", "features", "tech_stack".
    - Highly recommended types: "flow" (diagramHint: "flowchart"), "architecture" (diagramHint: "flowchart" or "sequence"), "data_model" (diagramHint: "er").
@@ -269,7 +269,7 @@ ATURAN UTAMA:
 2. Keluarkan HANYA dokumen JSON valid sesuai format skema persis di bawah. Tanpa teks pengantar atau penutup di luar JSON.
 3. Persyaratan Struktur:
    - 3 sampai 5 bab (chapters).
-   - Total 8 sampai 14 section di seluruh bab (tiap bab minimal memuat 1 section, targetkan 10-12 section).
+   - Total tepat 11 section di seluruh bab (tiap bab minimal memuat 1 section). Contoh JSON di bawah hanya menunjukkan format field.
    - Section pertama pada bab pertama WAJIB bertipe "overview" (mis. "Gambaran Proyek" atau "Spesifikasi Proyek").
    - WAJIB memuat minimal satu section untuk masing-masing tipe berikut: "overview", "problem", "users", "features", "tech_stack".
    - Sangat disarankan menyertakan tipe: "flow" (diagramHint: "flowchart"), "architecture" (diagramHint: "flowchart" atau "sequence"), dan "data_model" (diagramHint: "er").
@@ -392,7 +392,7 @@ export function buildPlannerPrompt(
 
   prompt += `Berdasarkan ide dan hasil brainstorming di atas, rancang struktur PRD dinamis yang mematuhi aturan ketat berikut:
 - 3 sampai 5 bab (chapters).
-- Total section di seluruh bab HARUS antara 8 sampai 14 section (targetkan 10-12 section).
+- Total section di seluruh bab HARUS tepat 11 section.
 - Section pertama di bab pertama WAJIB bertipe "overview" (mis. "Gambaran Proyek").
 - WAJIB menyertakan minimal satu section untuk masing-masing tipe berikut: "overview", "problem", "users", "features", "tech_stack".
 - keyDecisions terdiri dari 3 sampai 8 butir keputusan arsitektural penting.
@@ -411,6 +411,9 @@ export interface RunPlannerOptions {
   client?: ReturnType<typeof getAiClient>;
   model?: string;
   signal?: AbortSignal;
+  onUsage?: (usage: { inputTokens?: number; outputTokens?: number; durationMs: number; attempt: number }) => Promise<void> | void;
+  bypassQueue?: boolean;
+  poolManaged?: boolean;
 }
 
 export interface PlanResult {
@@ -476,6 +479,9 @@ export async function runPlanner(options: RunPlannerOptions): Promise<PlanResult
     client: options.client,
     model: options.model,
     signal: options.signal,
+    onUsage: options.onUsage,
+    bypassQueue: options.bypassQueue,
+    poolManaged: options.poolManaged,
   });
 
   const now = new Date();

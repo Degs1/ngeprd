@@ -209,45 +209,13 @@ function MermaidViewComponent({
         const errorElement = document.getElementById(`d${sectionId}`);
         if (errorElement) errorElement.remove();
 
-        // Auto-repair retry (max 2 attempts)
-        if (attemptCount < 2 && prdId) {
-          setRepairAttempts(attemptCount + 1);
-          setRenderStatus("repairing");
-
-          try {
-            const repairRes = await fetch(
-              `/api/prds/${prdId}/sections/${sectionId}/repair-diagram`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  brokenCode: codeToRender,
-                  error: errString,
-                }),
-              }
-            );
-
-            if (repairRes.ok) {
-              const repairData = await repairRes.json();
-              if (repairData?.repairedCode) {
-                const repairedClean = getCleanMermaidCode(repairData.repairedCode);
-                setCurrentCode(repairData.repairedCode);
-                await executeRender(repairedClean, attemptCount + 1);
-                return;
-              }
-            }
-          } catch (repairErr) {
-            console.error("Auto-repair API call failed:", repairErr);
-          }
-        }
-
-        // Exhausted repair attempts or repair endpoint failed
+        // Preserve the invalid source so the user can correct it manually.
         setRenderStatus("error");
         setErrorMessage(errString);
         onStatusChangeRef.current?.("invalid", codeToRender, errString);
       }
     },
-    [sectionId, prdId, svgHtml]
+    [sectionId, svgHtml]
   );
 
   // Trigger render ONLY when currentCode or prdId changes

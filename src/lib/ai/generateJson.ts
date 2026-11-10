@@ -18,7 +18,9 @@ export interface GenerateJsonOptions<T extends z.ZodTypeAny> {
   model?: string;
   signal?: AbortSignal;
   bypassQueue?: boolean;
+  poolManaged?: boolean;
   idempotencyKey?: string;
+  onUsage?: (usage: { inputTokens?: number; outputTokens?: number; durationMs: number; attempt: number }) => Promise<void> | void;
 }
 
 /**
@@ -54,6 +56,52 @@ export function extractJsonFromText(raw: string): string {
   }
 
   return text;
+}
+
+/**
+ * Attempts to parse JSON directly, and if parsing fails, applies relaxed repair
+ * strategies (single-quoted keys, unquoted keys, trailing commas, markdown extraction).
+ */
+export function tryParseOrRepairJson(cleaned: string, stage?: string, rawText?: string): unknown {
+  try {
+    return JSON.parse(cleaned);
+  } catch (initialErr) {
+    // 1. Try relaxed repairs on cleaned string:
+    try {
+      // Fix single-quoted keys: {'key': -> {"key":
+      let repaired = cleaned.replace(/([{,]\s*)'([^'\\]*(?:\\.[^'\\]*)*)'\s*:/g, '$1"$2":');
+      // Fix unquoted keys: {key: -> {"key":
+      repaired = repaired.replace(/([{,]\s*)([a-zA-Z0-9_]+)\s*:/g, '$1"$2":');
+      // Fix single-quoted values: : 'val' -> : "val"
+      repaired = repaired.replace(/:\s*'([^'\\]*(?:\\.[^'\\]*)*)'/g, ':"$1"');
+      // Remove trailing commas before } or ]
+      repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+      return JSON.parse(repaired);
+    } catch {}
+
+    // 2. Specific stage heuristics:
+    const source = rawText || cleaned;
+    if (stage === "sectionWriter") {
+      // Look for explicit "content" field in JSON (single or double quoted)
+      const contentMatch = source.match(/['"]content['"]\s*:\s*(["'])([\s\S]*?)\1\s*}?\s*$/);
+      if (contentMatch && contentMatch[2]) {
+        try {
+          return { content: JSON.parse(`"${contentMatch[2].replace(/"/g, '\\"')}"`) };
+        } catch {
+          return { content: contentMatch[2].replace(/\\n/g, "\n").replace(/\\"/g, '"') };
+        }
+      }
+      // If the model returned pure markdown text without JSON wrapper
+      const trimmed = source.replace(/^```(?:markdown|md)?\s*/i, "").replace(/```\s*$/i, "").trim();
+      if (trimmed.length >= 20) {
+        if (trimmed.startsWith("#") || trimmed.includes("\n") || !trimmed.startsWith("{")) {
+          return { content: trimmed };
+        }
+      }
+    }
+
+    throw initialErr;
+  }
 }
 
 /**
@@ -258,8 +306,8 @@ export async function generateJson<T extends z.ZodTypeAny>(
   const client = options.client || getAiClient();
   const modelName = options.model || process.env.AI_MODEL || "gemini";
 
-  const MAX_TOTAL_ATTEMPTS = 3;
-  const MAX_RATE_LIMIT_RETRIES = Number(process.env.AI_MAX_RATE_LIMIT_RETRIES) || 3;
+  const MAX_TOTAL_ATTEMPTS = options.poolManaged ? 2 : 3;
+  const MAX_RATE_LIMIT_RETRIES = options.poolManaged ? 0 : Number(process.env.AI_MAX_RATE_LIMIT_RETRIES) || 3;
 
   let attempt = 0;
   let networkRetryCount = 0;
@@ -315,12 +363,19 @@ export async function generateJson<T extends z.ZodTypeAny>(
 
       const rawText = response.text;
       const durationMs = Date.now() - startTime;
+      const sdkUsage = response.usage as { inputTokens?: number; outputTokens?: number; promptTokens?: number; completionTokens?: number } | undefined;
+      await options.onUsage?.({
+        inputTokens: sdkUsage?.inputTokens ?? sdkUsage?.promptTokens,
+        outputTokens: sdkUsage?.outputTokens ?? sdkUsage?.completionTokens,
+        durationMs,
+        attempt,
+      });
 
       // Extract JSON and parse
       let parsed: unknown;
       try {
         const cleaned = extractJsonFromText(rawText);
-        parsed = JSON.parse(cleaned);
+        parsed = tryParseOrRepairJson(cleaned, options.stage, rawText);
       } catch (parseErr: unknown) {
         const parseMsg =
           parseErr instanceof Error ? parseErr.message : String(parseErr);

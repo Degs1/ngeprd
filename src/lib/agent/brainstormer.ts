@@ -71,6 +71,10 @@ export interface RunBrainstormerOptions {
   timeoutMs?: number;
   client?: ReturnType<typeof getAiClient>;
   model?: string;
+  onUsage?: (usage: { inputTokens?: number; outputTokens?: number; durationMs: number; attempt: number }) => Promise<void> | void;
+  bypassQueue?: boolean;
+  poolManaged?: boolean;
+  signal?: AbortSignal;
 }
 
 export interface BrainstormResult {
@@ -95,6 +99,10 @@ export async function runBrainstormer(
     timeoutMs: options.timeoutMs,
     client: options.client,
     model: options.model,
+    onUsage: options.onUsage,
+    bypassQueue: options.bypassQueue,
+    poolManaged: options.poolManaged,
+    signal: options.signal,
   });
 
   const questions: BrainstormQuestion[] = result.questions.map((q, idx) => ({

@@ -66,8 +66,11 @@ export async function PATCH(req: NextRequest, context: RouteParams) {
       );
     }
 
-    const updated = await updatePrdTitle(id, authCtx.ownerId, parsed.data.title);
+    const updated = await updatePrdTitle(id, authCtx.ownerId, parsed.data.title, parsed.data.baseRev);
     if (!updated) {
+      if (parsed.data.baseRev && await getPrdById(id, authCtx.ownerId)) {
+        return NextResponse.json({ error: { code: "REV_CONFLICT" } }, { status: 409 });
+      }
       return NextResponse.json(
         { error: { code: "NOT_FOUND", message: "PRD document not found or update failed" } },
         { status: 404 }

@@ -19,7 +19,7 @@ interface PrdStoreState {
 
   fetchPrds: () => Promise<void>;
   createPrd: (idea: string, lang?: "id" | "en") => Promise<string | null>;
-  renamePrd: (id: string, title: string) => Promise<boolean>;
+  renamePrd: (id: string, title: string, baseRev?: number) => Promise<boolean>;
   deletePrd: (id: string) => Promise<boolean>;
   setSearchQuery: (query: string) => void;
   setSidebarOpenMobile: (open: boolean) => void;
@@ -88,7 +88,7 @@ export const usePrdStore = create<PrdStoreState>((set, get) => ({
     }
   },
 
-  renamePrd: async (id: string, title: string) => {
+  renamePrd: async (id: string, title: string, baseRev?: number) => {
     const trimmedTitle = title.trim();
     if (!trimmedTitle) return false;
 
@@ -104,7 +104,7 @@ export const usePrdStore = create<PrdStoreState>((set, get) => ({
       const res = await fetch(`/api/prds/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title: trimmedTitle }),
+        body: JSON.stringify({ title: trimmedTitle, baseRev }),
       });
 
       if (!res.ok) {

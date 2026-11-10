@@ -8,7 +8,14 @@
     "start": "next start",
     "lint": "next lint",
     "test": "tsx --test tests/*.test.ts",
-    "db:indexes": "tsx scripts/ensure-indexes.ts"
+    "db:indexes": "tsx scripts/ensure-indexes.ts",
+    "worker:dev": "tsx watch worker/index.ts",
+    "worker:start": "tsx worker/index.ts",
+    "worker:resume": "tsx scripts/resume-job.ts",
+    "setup:provider": "tsx scripts/setup-provider.ts",
+    "test:browser": "tsx scripts/verify-browser-journey.ts",
+    "test:browser:headed": "tsx scripts/verify-browser-journey.ts --headed",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.106",

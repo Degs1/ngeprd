@@ -9,8 +9,8 @@ const serverEnvSchema = z.object({
     .string()
     .min(1)
     .default("bikinprd"),
-  AI_BASE_URL: z.string().optional().default("http://127.0.0.1:20128/v1"),
-  AI_API_KEY: z.string().optional().default("sk-035aa783d373c298-t4mmyi-35d0e9a7"),
+  AI_BASE_URL: z.string().optional(),
+  AI_API_KEY: z.string().optional(),
   AI_MODEL: z.string().optional().default("ag/gemini-3.8-flash-high"),
   AI_TIMEOUT_MS: z.coerce.number().optional().default(45000),
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -26,9 +26,17 @@ export type ServerEnv = z.infer<typeof serverEnvSchema>;
 
 let cachedEnv: ServerEnv | null = null;
 
+export function resetServerEnv(): void {
+  cachedEnv = null;
+}
+
 export function getServerEnv(): ServerEnv {
   if (typeof window !== "undefined") {
     throw new Error("Server environment variables cannot be accessed on the client side.");
+  }
+
+  if (cachedEnv && (cachedEnv.MONGODB_DB !== (process.env.MONGODB_DB || "bikinprd") || cachedEnv.MONGODB_URI !== (process.env.MONGODB_URI || "mongodb://127.0.0.1:27017"))) {
+    cachedEnv = null;
   }
 
   if (!cachedEnv) {

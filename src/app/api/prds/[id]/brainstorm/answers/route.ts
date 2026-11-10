@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthContext } from "@/lib/auth/owner";
-import { upsertBrainstormAnswer } from "@/lib/db/prdRepository";
+import { getPrdById, upsertBrainstormAnswer } from "@/lib/db/prdRepository";
 import { BrainstormAnswerSchema } from "@/lib/schemas/prd";
 
 export const runtime = "nodejs";
@@ -38,6 +38,12 @@ export async function PUT(req: NextRequest, context: RouteParams) {
       );
     }
 
+    const current = await getPrdById(id, ownerId);
+    if (!current) return NextResponse.json({ error: { code: "NOT_FOUND" } }, { status: 404 });
+    if (!current.brainstorm.questions.some((q) => q.id === validation.data.questionId)) {
+      return NextResponse.json({ error: { code: "INVALID_QUESTION" } }, { status: 400 });
+    }
+    if (current.sections.length) return NextResponse.json({ error: { code: "ANSWERS_LOCKED" } }, { status: 409 });
     const updatedDoc = await upsertBrainstormAnswer(
       id,
       ownerId,

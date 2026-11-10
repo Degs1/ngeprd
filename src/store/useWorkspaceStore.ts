@@ -100,6 +100,9 @@ export interface WorkspaceState {
 
   // Generation & SSE
   isGenerating: boolean;
+  jobState: string | null;
+  jobStage: string | null;
+  jobReason: string | null;
   generationProgress: GenerationProgress;
   abortController: AbortController | null;
 
@@ -133,7 +136,7 @@ export interface WorkspaceState {
   saveLayoutToServer: () => Promise<boolean>;
   startGeneration: (sectionIds?: string[]) => Promise<void>;
   cancelGeneration: () => Promise<void>;
-  pollGenerationStatus: (id: string) => void;
+  pollGenerationStatus: (id: string, statusUrl?: string) => void;
   handleSseEvent: (event: string, data: unknown) => void;
   addSection: (chapterId: string, title: string, type?: SectionType) => Promise<boolean>;
   deleteSection: (sectionId: string) => Promise<boolean>;
@@ -199,6 +202,9 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
   activeTab: "outline",
 
   isGenerating: false,
+  jobState: null,
+  jobStage: null,
+  jobReason: null,
   generationProgress: { total: 0, ready: 0, failed: 0 },
   abortController: null,
 
@@ -237,6 +243,18 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         edges,
         isLoading: false,
       });
+
+      if (!generationPollTimer) {
+        const jobResponse = await fetch(`/api/prds/${id}/jobs`, { cache: "no-store" }).catch(() => null);
+        if (jobResponse?.ok) {
+          const current = await jobResponse.json();
+          if (current.job) set({ jobState: current.job.state, jobStage: current.job.stage, jobReason: current.job.reason || null });
+          if (current.job?.kind === "generation" && ["queued", "running", "waiting_capacity", "retry_scheduled"].includes(current.job.state)) {
+            set({ isGenerating: true });
+            get().pollGenerationStatus(id, current.statusUrl);
+          }
+        }
+      }
 
       // Load active or recent changesets for this PRD (TASK-016)
       if (reloadChangeset) {
@@ -619,6 +637,12 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         return;
       }
 
+      if (res.status === 202) {
+        const accepted = await res.json();
+        get().pollGenerationStatus(prdId, accepted.statusUrl);
+        return;
+      }
+
       if (!res.body) {
         set({ isGenerating: false });
         return;
@@ -651,7 +675,7 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
     }
   },
 
-  pollGenerationStatus: (id: string) => {
+  pollGenerationStatus: (id: string, statusUrl?: string) => {
     if (generationPollTimer) {
       clearInterval(generationPollTimer);
       generationPollTimer = null;
@@ -667,6 +691,21 @@ export const useWorkspaceStore = create<WorkspaceState>((set, get) => ({
         return;
       }
 
+      if (statusUrl) {
+        const response = await fetch(statusUrl, { cache: "no-store" }).catch(() => null);
+        if (response?.ok) {
+          const snapshot = await response.json();
+          set({ jobState: snapshot.job?.state || null, jobStage: snapshot.job?.stage || null, jobReason: snapshot.job?.reason || null });
+          if (snapshot.prd) get().setDocument(snapshot.prd);
+          if (["completed", "failed", "blocked", "cancelled"].includes(snapshot.job?.state)) {
+            if (generationPollTimer) clearInterval(generationPollTimer);
+            generationPollTimer = null;
+            set({ isGenerating: false, abortController: null });
+            return;
+          }
+          return;
+        }
+      }
       await get().loadPrd(id, false);
       const doc = get().document;
       if (!doc || doc.status !== "generating") {

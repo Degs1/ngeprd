@@ -127,6 +127,9 @@ ATURAN SINTAKS & KUALITAS WAJIB:
 }
 
 export interface RunDiagramGeneratorOptions {
+  onUsage?: (usage: { inputTokens?: number; outputTokens?: number; durationMs: number; attempt: number }) => Promise<void> | void;
+  bypassQueue?: boolean;
+  poolManaged?: boolean;
   content: string;
   sectionTitle: string;
   diagramHint: DiagramHint;
@@ -184,6 +187,9 @@ export async function runDiagramGenerator(
     client: options.client,
     model: options.model,
     signal: options.signal,
+    onUsage: options.onUsage,
+    bypassQueue: options.bypassQueue,
+    poolManaged: options.poolManaged,
   });
 
   const cleanedCode = cleanMermaidCode(aiOutput.code);

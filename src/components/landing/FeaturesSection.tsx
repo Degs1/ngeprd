@@ -60,15 +60,15 @@ export default function FeaturesSection() {
                   <Code2 className="w-4 h-4" />
                 </div>
                 <span className="text-[10px] font-mono text-[#8EA690] px-2 py-0.5 rounded bg-[#14221C] border border-[#1F3028]">
-                  SELF-HEALING
+                  LIVE PREVIEW
                 </span>
               </div>
 
               <h3 className="text-base sm:text-lg font-bold text-[#EAF0EB] mb-2 font-sans">
-                Auto-Repair Mermaid Engine
+                Editor Mermaid dengan Preview
               </h3>
               <p className="text-xs sm:text-sm text-[#8FA396] leading-relaxed mb-4 font-sans">
-                Diagram sequence atau flowchart yang dibuat AI seringkali mengandung karakter ilegal atau kurung salah. Engine kami mendeteksi error parse secara otomatis dan melakukan reparasi sintaks hingga 100% valid.
+                Tinjau diagram Mermaid langsung di canvas. Jika sumbernya tidak valid, pesan kesalahan tampil agar Anda dapat memperbaikinya secara manual.
               </p>
             </div>
 
@@ -118,7 +118,7 @@ export default function FeaturesSection() {
                 Atomic Lock &amp; HTTP 409 Conflict Guard
               </h3>
               <p className="text-xs sm:text-sm text-[#8FA396] leading-relaxed mb-4 font-sans">
-                Mencegah overwrite data ketika AI sedang streaming memperbarui section bersamaan dengan editan manual Anda. Protokol revision-token menjamin konsistensi state tanpa data loss.
+                Pemeriksaan versi pada setiap edit mencegah perubahan manual menimpa versi yang lebih baru dan menampilkan konflik saat perlu ditinjau.
               </p>
             </div>
 

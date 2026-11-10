@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { auth } from "@/auth";
 import { isAdminEmail } from "./admin";
-import { getPrdCollection, getChangeSetCollection } from "../db/mongo";
+import { COLLECTIONS, getClient, getDb } from "../db/mongo";
 
 export const OWNER_COOKIE_NAME = "bp_owner";
 export const OWNER_COOKIE_MAX_AGE = 365 * 24 * 60 * 60; // 1 year in seconds
@@ -21,7 +21,7 @@ export interface AuthContext {
  */
 export async function getAuthContext(explicitId?: string): Promise<AuthContext> {
   // If explicit ID passed (e.g. testing or explicit header)
-  if (explicitId && explicitId.trim().length > 0) {
+  if (process.env.NODE_ENV !== "production" && explicitId && explicitId.trim().length > 0) {
     const trimmed = explicitId.trim();
     const email = trimmed.includes("@") ? trimmed.toLowerCase() : null;
     return {
@@ -82,25 +82,34 @@ export async function getAuthContext(explicitId?: string): Promise<AuthContext> 
  */
 export async function migratePrdOwner(fromOwnerId: string, toOwnerId: string): Promise<number> {
   if (!fromOwnerId || !toOwnerId || fromOwnerId === toOwnerId) return 0;
+  const client = await getClient();
+  const db = await getDb();
+  const session = client.startSession();
   try {
-    const prdCol = await getPrdCollection();
-    const result = await prdCol.updateMany(
-      { ownerId: fromOwnerId },
-      { $set: { ownerId: toOwnerId, updatedAt: new Date() } }
-    );
-
-    if (result.modifiedCount > 0) {
-      const csCol = await getChangeSetCollection();
-      await csCol.updateMany(
-        { ownerId: fromOwnerId },
-        { $set: { ownerId: toOwnerId, updatedAt: new Date() } }
-      );
-    }
-
-    return result.modifiedCount;
+    let count = 0;
+    await session.withTransaction(async () => {
+      const moved = await db.collection(COLLECTIONS.PRD_DOCUMENTS).updateMany({ ownerId: fromOwnerId },
+        { $set: { ownerId: toOwnerId, updatedAt: new Date() } }, { session });
+      count = moved.modifiedCount;
+      if (!count) return;
+      await db.collection(COLLECTIONS.PRD_CHANGESETS).updateMany({ ownerId: fromOwnerId },
+        { $set: { ownerId: toOwnerId, updatedAt: new Date() } }, { session });
+      await db.collection(COLLECTIONS.AI_JOBS).updateMany({ ownerId: fromOwnerId },
+        { $set: { ownerId: toOwnerId, updatedAt: new Date() } }, { session });
+      await db.collection(COLLECTIONS.AI_TASKS).updateMany({ ownerId: fromOwnerId, state: "leased" },
+        { $set: { ownerId: toOwnerId, state: "queued", nextRunAt: new Date(), updatedAt: new Date() },
+          $inc: { fence: 1 }, $unset: { leaseOwner: "", leaseUntil: "" } }, { session });
+      await db.collection(COLLECTIONS.AI_TASKS).updateMany({ ownerId: fromOwnerId },
+        { $set: { ownerId: toOwnerId, updatedAt: new Date() } }, { session });
+      await db.collection(COLLECTIONS.AI_EVENTS).updateMany({ ownerId: fromOwnerId },
+        { $set: { ownerId: toOwnerId } }, { session });
+    });
+    return count;
   } catch (err) {
     console.error(`Failed to migrate PRDs from ${fromOwnerId} to ${toOwnerId}:`, err);
     return 0;
+  } finally {
+    await session.endSession();
   }
 }
 

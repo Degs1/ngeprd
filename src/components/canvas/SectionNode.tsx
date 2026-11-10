@@ -1,6 +1,6 @@
 "use client";
 
-import React, { memo, useMemo, useState, useEffect, useRef, useCallback } from "react";
+import React, { memo, useMemo, useState, useEffect, useRef } from "react";
 import { Handle, Position, type NodeProps } from "@xyflow/react";
 import {
   Clock,
@@ -14,14 +14,12 @@ import {
   RefreshCw,
   Layers,
   Code2,
-  MessageSquare,
 } from "lucide-react";
 import { marked } from "marked";
 import { useWorkspaceStore } from "@/store/useWorkspaceStore";
 import type { Section, SectionType, SectionStatus, Diagram } from "@/lib/schemas/prd";
 import { cn } from "@/lib/utils";
 import { MermaidView } from "./MermaidView";
-import { NodeInstructionBar } from "./NodeInstructionBar";
 
 export interface SectionNodeData {
   id: string;
@@ -77,6 +75,8 @@ function SectionNode({ id, data, selected }: NodeProps) {
   const selectNode = useWorkspaceStore((state) => state.selectNode);
   const saveSection = useWorkspaceStore((state) => state.saveSection);
   const activeChangeSet = useWorkspaceStore((state) => state.activeChangeSet);
+  const jobState = useWorkspaceStore((state) => state.jobState);
+  const documentStatus = useWorkspaceStore((state) => state.document?.status);
 
   const isRevisionActive =
     activeChangeSet &&
@@ -92,6 +92,11 @@ function SectionNode({ id, data, selected }: NodeProps) {
 
   const section: Partial<Section> = storeSection || nodeData;
   const status: SectionStatus = section.status || "pending";
+  const isFailed =
+    status === "failed" ||
+    (status === "pending" &&
+      !isGenerating &&
+      (jobState === "blocked" || jobState === "failed" || documentStatus === "failed"));
   const title = section.title || nodeData.title || "Section";
   const type = (section.type || nodeData.type || "custom") as string;
   const content = section.content || "";
@@ -105,6 +110,8 @@ function SectionNode({ id, data, selected }: NodeProps) {
   const [editTitle, setEditTitle] = useState(title);
   const [editContent, setEditContent] = useState(content);
   const [editDiagramCode, setEditDiagramCode] = useState(diagram?.code || "");
+  const [editHistory, setEditHistory] = useState<{ title: string; content: string; diagramCode: string }[]>([]);
+  const [redoHistory, setRedoHistory] = useState<{ title: string; content: string; diagramCode: string }[]>([]);
   const [editActiveTab, setEditActiveTab] = useState<"content" | "diagram">(
     "content"
   );
@@ -119,6 +126,8 @@ function SectionNode({ id, data, selected }: NodeProps) {
 
   // Debounce autosave timer ref
   const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveChainRef = useRef<Promise<boolean>>(Promise.resolve(true));
+  const lastSavedRevRef = useRef(rev);
   const latestValuesRef = useRef({
     title: editTitle,
     content: editContent,
@@ -143,6 +152,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
       setEditContent(content);
       setEditDiagramCode(diagram?.code || "");
       setBaseRev(rev);
+      lastSavedRevRef.current = rev;
     }
   }, [title, content, diagram?.code, rev, isEditing]);
 
@@ -178,7 +188,9 @@ function SectionNode({ id, data, selected }: NodeProps) {
     contentToSave: string,
     diagramCodeToSave: string,
     targetBaseRev: number
-  ) => {
+  ): Promise<boolean> => {
+    const previous = saveChainRef.current;
+    const current = previous.catch(() => false).then(async () => {
     setSaveState("saving");
     setSaveErrorMessage(null);
 
@@ -192,9 +204,9 @@ function SectionNode({ id, data, selected }: NodeProps) {
                 ? diagram.status || ("unchecked" as const)
                 : ("unchecked" as const),
           }
-        : undefined;
+        : { kind: "mermaid" as const, code: "", status: "unchecked" as const };
 
-    const result = await saveSection(id, targetBaseRev, {
+    const result = await saveSection(id, Math.max(lastSavedRevRef.current, targetBaseRev), {
       title: titleToSave,
       content: contentToSave,
       diagram: diagramPayload,
@@ -202,6 +214,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
 
     if (result.success && result.rev !== undefined) {
       setBaseRev(result.rev);
+      lastSavedRevRef.current = result.rev;
       setSaveState("saved");
       setConflictRev(null);
 
@@ -209,14 +222,43 @@ function SectionNode({ id, data, selected }: NodeProps) {
       setTimeout(() => {
         setSaveState((prev) => (prev === "saved" ? "idle" : prev));
       }, 2500);
+      return true;
     } else if (result.conflict) {
       // 409 Concurrency Conflict
       setSaveState("conflict");
       setConflictRev(result.currentRev ?? null);
+      return false;
     } else {
       setSaveState("error");
       setSaveErrorMessage(result.error || "Gagal menyimpan perubahan");
+      return false;
     }
+    });
+    saveChainRef.current = current;
+    return current;
+  };
+
+  const rememberEdit = () => {
+    setEditHistory((items) => [...items.slice(-49), { title: editTitle, content: editContent, diagramCode: editDiagramCode }]);
+    setRedoHistory([]);
+  };
+  const restoreEdit = (next: { title: string; content: string; diagramCode: string }) => {
+    setEditTitle(next.title); setEditContent(next.content); setEditDiagramCode(next.diagramCode);
+    scheduleAutosave(next.title, next.content, next.diagramCode);
+  };
+  const undoEdit = () => {
+    if (!editHistory.length) return;
+    const next = editHistory[editHistory.length - 1];
+    setEditHistory((items) => items.slice(0, -1));
+    setRedoHistory((items) => [...items, { title: editTitle, content: editContent, diagramCode: editDiagramCode }]);
+    restoreEdit(next);
+  };
+  const redoEdit = () => {
+    if (!redoHistory.length) return;
+    const next = redoHistory[redoHistory.length - 1];
+    setRedoHistory((items) => items.slice(0, -1));
+    setEditHistory((items) => [...items, { title: editTitle, content: editContent, diagramCode: editDiagramCode }]);
+    restoreEdit(next);
   };
 
   // Schedule autosave with ~800ms debounce
@@ -242,18 +284,21 @@ function SectionNode({ id, data, selected }: NodeProps) {
   };
 
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    rememberEdit();
     const val = e.target.value;
     setEditTitle(val);
     scheduleAutosave(val, editContent, editDiagramCode);
   };
 
   const handleContentChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    rememberEdit();
     const val = e.target.value;
     setEditContent(val);
     scheduleAutosave(editTitle, val, editDiagramCode);
   };
 
   const handleDiagramCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    rememberEdit();
     const val = e.target.value;
     setEditDiagramCode(val);
     scheduleAutosave(editTitle, editContent, val);
@@ -264,8 +309,8 @@ function SectionNode({ id, data, selected }: NodeProps) {
       clearTimeout(autosaveTimerRef.current);
       autosaveTimerRef.current = null;
     }
-    await performSave(editTitle, editContent, editDiagramCode, baseRev);
-    setIsEditing(false);
+    const saved = await performSave(editTitle, editContent, editDiagramCode, baseRev);
+    if (saved) setIsEditing(false);
   };
 
   const handleConflictReload = async () => {
@@ -281,21 +326,6 @@ function SectionNode({ id, data, selected }: NodeProps) {
       await performSave(editTitle, editContent, editDiagramCode, conflictRev);
     }
   };
-
-  const handleDiagramStatusChange = useCallback(
-    async (newStatus: "ok" | "invalid", repairedCode?: string) => {
-      if (repairedCode && repairedCode !== diagram?.code) {
-        await saveSection(id, baseRev, {
-          diagram: {
-            kind: "mermaid",
-            code: repairedCode,
-            status: newStatus,
-          },
-        });
-      }
-    },
-    [diagram?.code, id, baseRev, saveSection]
-  );
 
   const handleRetry = () => {
     if (isGenerating) return;
@@ -318,7 +348,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
           "!border-[#D4B36A] !ring-1 !ring-[#D4B36A] shadow-2xl",
         status === "writing" &&
           "border-[#243B4D] shadow-lg",
-        status === "failed" && "border-[#442420] bg-[#1a1212]",
+        (status === "failed" || isFailed) && "border-[#442420] bg-[#1a1212]",
         isEditing && "ring-1 ring-[#8EA690] border-[#8EA690] shadow-2xl"
       )}
     >
@@ -405,7 +435,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
                 </div>
               ) : (
                 <>
-                  {status === "pending" && (
+                  {status === "pending" && !isFailed && (
                     <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#586C61] bg-[#101A16] border border-[#1F3028] px-2 py-0.5 rounded-full">
                       <Clock className="w-3 h-3 text-[#586C61]" />
                       <span>Pending</span>
@@ -423,7 +453,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
                       <span>Ready</span>
                     </span>
                   )}
-                  {status === "failed" && (
+                  {(status === "failed" || isFailed) && (
                     <span className="inline-flex items-center gap-1 text-[11px] font-mono font-medium text-[#D48B80] bg-[#281816] border border-[#442420] px-2 py-0.5 rounded-full">
                       <AlertCircle className="w-3 h-3 text-[#D48B80]" />
                       <span>Gagal</span>
@@ -574,7 +604,6 @@ function SectionNode({ id, data, selected }: NodeProps) {
                         sectionId={id}
                         prdId={prdId || undefined}
                         status="unchecked"
-                        onStatusChange={handleDiagramStatusChange}
                       />
                     </div>
                   )}
@@ -630,7 +659,6 @@ function SectionNode({ id, data, selected }: NodeProps) {
                         sectionId={id}
                         prdId={prdId || undefined}
                         status={diagram.status}
-                        onStatusChange={handleDiagramStatusChange}
                       />
                     </div>
                   )}
@@ -638,7 +666,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
               )}
 
               {/* Status: Failed State */}
-              {status === "failed" && (
+              {(status === "failed" || isFailed) && (
                 <div className="p-3 bg-[#281816] border border-[#442420] rounded-xl space-y-2">
                   <div className="flex items-start gap-2 text-[#D48B80] text-xs">
                     <AlertCircle className="w-4 h-4 text-[#D48B80] shrink-0 mt-0.5" />
@@ -646,7 +674,9 @@ function SectionNode({ id, data, selected }: NodeProps) {
                       <p className="font-semibold">Gagal memproses bagian ini</p>
                       <p className="text-[11px] text-[#D48B80] mt-0.5 opacity-90">
                         {error?.message ||
-                          "Terjadi kesalahan saat memanggil model AI."}
+                          (jobState === "blocked"
+                            ? "Kapasitas provider AI tidak tersedia / akun terblokir."
+                            : "Terjadi kesalahan saat memanggil model AI.")}
                       </p>
                     </div>
                   </div>
@@ -665,6 +695,8 @@ function SectionNode({ id, data, selected }: NodeProps) {
               </span>
 
               <div className="flex items-center gap-1.5">
+                <button type="button" onClick={undoEdit} disabled={!editHistory.length} className="nodrag nowheel px-2 py-1 text-xs text-[#8FA396] disabled:opacity-40">Undo</button>
+                <button type="button" onClick={redoEdit} disabled={!redoHistory.length} className="nodrag nowheel px-2 py-1 text-xs text-[#8FA396] disabled:opacity-40">Redo</button>
                 <button
                   type="button"
                   onClick={() => {
@@ -692,7 +724,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
           ) : (
             <>
               <div className="flex items-center gap-2">
-                {status === "failed" ? (
+                {(status === "failed" || isFailed) ? (
                   <button
                     type="button"
                     onClick={handleRetry}
@@ -708,20 +740,7 @@ function SectionNode({ id, data, selected }: NodeProps) {
                     <RotateCcw className={cn("w-3 h-3", isGenerating && "animate-spin")} />
                     <span>{isGenerating ? "Sedang generate..." : "Coba lagi"}</span>
                   </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={(e: any) => {
-                      e.stopPropagation();
-                      selectNode(id);
-                    }}
-                    className="nodrag nowheel px-2.5 py-1 text-xs font-semibold text-[#8EA690] bg-[#162720] hover:bg-[#1D332A] border border-[#243D31] rounded-lg transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
-                    title="Buka bilah instruksi AI untuk bagian ini"
-                  >
-                    <MessageSquare className="w-3 h-3 text-[#8EA690]" />
-                    <span>Ubah dengan AI</span>
-                  </button>
-                )}
+                ) : null}
 
                 {/* Edit Button */}
                 <button
@@ -757,18 +776,6 @@ function SectionNode({ id, data, selected }: NodeProps) {
           )}
         </div>
       </div>
-
-      {/* Floating Node Instruction Bar */}
-      {selected && status === "ready" && !isEditing && (
-        <div className="absolute left-1/2 -translate-x-1/2 top-full pt-3 z-50">
-          <NodeInstructionBar
-            sectionId={id}
-            sectionTitle={title}
-            sectionType={type}
-            hasDiagram={Boolean(diagram?.code)}
-          />
-        </div>
-      )}
 
       {/* Outgoing Handle */}
       <Handle

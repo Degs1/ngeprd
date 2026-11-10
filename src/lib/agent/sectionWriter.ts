@@ -60,6 +60,9 @@ export interface SectionOutlineItem {
 }
 
 export interface RunSectionWriterOptions {
+  onUsage?: (usage: { inputTokens?: number; outputTokens?: number; durationMs: number; attempt: number }) => Promise<void> | void;
+  bypassQueue?: boolean;
+  poolManaged?: boolean;
   idea: string;
   answers?: { questionText: string; answerText: string }[];
   keyDecisions: string[];
@@ -89,17 +92,21 @@ export function buildSectionWriterPrompt(options: RunSectionWriterOptions): stri
     prompt += `</answers>\n\n`;
   }
 
-  prompt += `<keyDecisions>\n`;
-  options.keyDecisions.forEach((d, i) => {
-    prompt += `${i + 1}. ${d}\n`;
-  });
-  prompt += `</keyDecisions>\n\n`;
+  if (options.keyDecisions && options.keyDecisions.length > 0) {
+    prompt += `<keyDecisions>\n`;
+    options.keyDecisions.forEach((d, i) => {
+      prompt += `${i + 1}. ${d}\n`;
+    });
+    prompt += `</keyDecisions>\n\n`;
+  }
 
-  prompt += `<outline>\n`;
-  options.outline.forEach((item, i) => {
-    prompt += `${i + 1}. [${item.type}] ${item.title}${item.brief ? ` - ${item.brief}` : ""}\n`;
-  });
-  prompt += `</outline>\n\n`;
+  if (options.outline && options.outline.length > 0) {
+    prompt += `<outline>\n`;
+    options.outline.forEach((item, i) => {
+      prompt += `${i + 1}. [${item.type}] ${item.title}${item.brief ? ` - ${item.brief}` : ""}\n`;
+    });
+    prompt += `</outline>\n\n`;
+  }
 
   prompt += `<section>\n`;
   prompt += `ID: ${options.section.id}\n`;
@@ -155,6 +162,9 @@ export async function runSectionWriter(
     client: options.client,
     model: options.model,
     signal: options.signal,
+    onUsage: options.onUsage,
+    bypassQueue: options.bypassQueue,
+    poolManaged: options.poolManaged,
   });
 
   const sanitized = sanitizeSectionMarkdown(aiOutput.content);

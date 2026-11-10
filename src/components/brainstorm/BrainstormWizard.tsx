@@ -48,6 +48,7 @@ export default function BrainstormWizard({
   const isFetchingRef = useRef<boolean>(false);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pendingAnswerRef = useRef<BrainstormAnswer | null>(null);
+  const pendingSaveRef = useRef<Promise<boolean> | null>(null);
 
   const computeResumeStep = useCallback(
     (qs: BrainstormQuestion[], ans: BrainstormAnswer[]): number => {
@@ -79,7 +80,7 @@ export default function BrainstormWizard({
         headers: { "Content-Type": "application/json" },
       });
 
-      const data = await res.json();
+      let data = await res.json();
 
       if (!res.ok) {
         const errorCode = data?.error?.code || "AI_FAILED";
@@ -92,9 +93,23 @@ export default function BrainstormWizard({
         return;
       }
 
-      if (data?.data?.questions && Array.isArray(data.data.questions)) {
-        const fetchedQuestions: BrainstormQuestion[] = data.data.questions;
-        const fetchedAnswers: BrainstormAnswer[] = data.data.answers || [];
+      if (res.status === 202 && data.jobId) {
+        for (let attempt = 0; attempt < 1800; attempt++) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          const statusRes = await fetch(data.statusUrl, { cache: "no-store" });
+          if (!statusRes.ok) throw new Error("Gagal membaca status brainstorming");
+          const snapshot = await statusRes.json();
+          if (snapshot.prd?.brainstorm?.questions?.length) {
+            data = { questions: snapshot.prd.brainstorm.questions, answers: snapshot.prd.brainstorm.answers, lang: snapshot.prd.lang };
+            break;
+          }
+          if (["failed", "blocked", "cancelled"].includes(snapshot.job?.state)) throw new Error(snapshot.job.reason || "Brainstorming gagal");
+        }
+        if (!data?.questions) throw new Error("Pertanyaan masih diproses. Coba muat ulang untuk melanjutkan.");
+      }
+      if (data?.questions && Array.isArray(data.questions)) {
+        const fetchedQuestions: BrainstormQuestion[] = data.questions;
+        const fetchedAnswers: BrainstormAnswer[] = data.answers || initialAnswers;
 
         setQuestions(fetchedQuestions);
         setAnswers(fetchedAnswers);
@@ -115,7 +130,7 @@ export default function BrainstormWizard({
       setIsLoadingQuestions(false);
       isFetchingRef.current = false;
     }
-  }, [prdId, hasInitializedStep, computeResumeStep]);
+  }, [prdId, hasInitializedStep, computeResumeStep, initialAnswers]);
 
   useEffect(() => {
     if (initialQuestions.length === 0) {
@@ -150,13 +165,16 @@ export default function BrainstormWizard({
           setSaveError(
             data?.error?.message || "Gagal menyimpan jawaban ke database."
           );
+          return false;
         }
+        return true;
       } catch (err: unknown) {
         const msg =
           err instanceof Error
             ? err.message
             : "Gangguan jaringan saat menyimpan jawaban.";
         setSaveError(msg);
+        return false;
       } finally {
         setIsSaving(false);
       }
@@ -164,15 +182,19 @@ export default function BrainstormWizard({
     [prdId]
   );
 
-  const flushPendingAnswer = useCallback(() => {
+  const flushPendingAnswer = useCallback(async () => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
       debounceTimerRef.current = null;
     }
     if (pendingAnswerRef.current) {
-      persistAnswerToServer(pendingAnswerRef.current);
+      pendingSaveRef.current = persistAnswerToServer(pendingAnswerRef.current);
+      const saved = await pendingSaveRef.current;
       pendingAnswerRef.current = null;
+      if (!saved) return false;
     }
+    if (pendingSaveRef.current) return pendingSaveRef.current;
+    return true;
   }, [persistAnswerToServer]);
 
   const saveAnswer = useCallback(
@@ -193,7 +215,7 @@ export default function BrainstormWizard({
         }
         debounceTimerRef.current = setTimeout(() => {
           if (pendingAnswerRef.current) {
-            persistAnswerToServer(pendingAnswerRef.current);
+            pendingSaveRef.current = persistAnswerToServer(pendingAnswerRef.current);
             pendingAnswerRef.current = null;
           }
         }, 800);
@@ -203,7 +225,7 @@ export default function BrainstormWizard({
           debounceTimerRef.current = null;
         }
         pendingAnswerRef.current = null;
-        persistAnswerToServer(newAnswer);
+        pendingSaveRef.current = persistAnswerToServer(newAnswer);
       }
     },
     [onAnswersUpdated, persistAnswerToServer]
@@ -279,8 +301,8 @@ export default function BrainstormWizard({
     }
   };
 
-  const handleGeneratePrd = () => {
-    flushPendingAnswer();
+  const handleGeneratePrd = async () => {
+    if (!(await flushPendingAnswer())) return;
     setLocalIsGenerating(true);
     if (onGeneratePrd) {
       onGeneratePrd();

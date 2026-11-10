@@ -174,7 +174,7 @@ test("SSE Utilities - createSseStreamParser handles chunk boundaries", () => {
 // 2. Planner Tests
 // -------------------------------------------------------------
 
-test("PlannerAiOutputSchema - validates 3-5 chapters, 8-14 sections, and required section types", () => {
+test("PlannerAiOutputSchema - validates 3-5 chapters, exactly 11 sections, and required section types", () => {
   const validPlannerOutput = {
     title: "Sistem Rental Kamera",
     keyDecisions: [
@@ -260,10 +260,15 @@ test("PlannerAiOutputSchema - validates 3-5 chapters, 8-14 sections, and require
     ],
   };
 
+  validPlannerOutput.chapters[2].sections.push(
+    { key: "sec_api", type: "api", title: "API", brief: "Endpoints", dependsOn: [] },
+    { key: "sec_nfr", type: "nfr", title: "NFR", brief: "Performance", dependsOn: [] },
+    { key: "sec_roadmap", type: "roadmap", title: "Roadmap", brief: "Milestones", dependsOn: [] },
+  );
   const parsed = PlannerAiOutputSchema.safeParse(validPlannerOutput);
   assert.equal(parsed.success, true);
 
-  // Rejects less than 8 sections
+  // Rejects fewer than 11 sections
   const tooFewSections = {
     ...validPlannerOutput,
     chapters: [
@@ -387,6 +392,11 @@ test("runPlanner - maps dynamic keys to server entities and breaks dependency cy
     ],
   };
 
+  mockPlanOutput.chapters[2].sections.push(
+    { key: "s_api", type: "api", title: "API", brief: "Endpoints", dependsOn: [] },
+    { key: "s_nfr", type: "nfr", title: "NFR", brief: "Performance", dependsOn: [] },
+    { key: "s_roadmap", type: "roadmap", title: "Roadmap", brief: "Milestones", dependsOn: [] },
+  );
   const client = createMockAiClient(mockPlanOutput);
 
   const plan = await runPlanner({
@@ -397,7 +407,7 @@ test("runPlanner - maps dynamic keys to server entities and breaks dependency cy
 
   assert.equal(plan.title, "Platform Logistik Cerdas");
   assert.equal(plan.chapters.length, 3);
-  assert.equal(plan.sections.length, 8);
+  assert.equal(plan.sections.length, 11);
   assert.ok(plan.sections.every((s) => s.id.startsWith("sec_")));
   assert.ok(plan.chapters.every((c) => c.id.startsWith("chap_")));
   assert.ok(plan.edges.length > 0);
@@ -714,6 +724,9 @@ test("runner - executes full multi-stage pipeline, persists each section immedia
                 diagramHint: "flowchart",
                 dependsOn: ["s_tech"],
               },
+              { key: "s_api", type: "api", title: "API", dependsOn: ["s_tech"] },
+              { key: "s_nfr", type: "nfr", title: "NFR", dependsOn: ["s_tech"] },
+              { key: "s_roadmap", type: "roadmap", title: "Roadmap", dependsOn: ["s_feat"] },
             ],
           },
         ],
@@ -745,7 +758,7 @@ test("runner - executes full multi-stage pipeline, persists each section immedia
   });
 
   assert.equal(result.success, true);
-  assert.equal(result.ready, 8);
+  assert.equal(result.ready, 11);
   assert.equal(result.failed, 0);
 
   // Check event stream order
@@ -756,8 +769,8 @@ test("runner - executes full multi-stage pipeline, persists each section immedia
   assert.ok(eventNames.includes("section.completed"));
   assert.equal(eventNames[eventNames.length - 1], "run.completed");
 
-  // Verify all 8 sections were saved to the repository
-  assert.equal(savedSections.size, 8);
+  // Verify all 11 sections were saved to the repository
+  assert.equal(savedSections.size, 11);
   savedSections.forEach((s) => {
     assert.equal(s.status, "ready");
     assert.ok(s.content.length > 0);
@@ -1348,6 +1361,11 @@ test("PlannerAiOutputSchema - normalizes case, synonyms, and diagram hints witho
     ],
   };
 
+  rawWithSynonyms.chapters[2].sections.push(
+    { key: "sec_9", type: "API", title: "API", brief: "Endpoints", dependsOn: [] },
+    { key: "sec_10", type: "NFR", title: "NFR", brief: "Performance", dependsOn: [] },
+    { key: "sec_11", type: "Roadmap", title: "Roadmap", brief: "Milestones", dependsOn: [] },
+  );
   const parsed = PlannerAiOutputSchema.safeParse(rawWithSynonyms);
   assert.equal(parsed.success, true, "Must successfully normalize synonyms without validation failure");
   if (parsed.success) {

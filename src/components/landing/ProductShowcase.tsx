@@ -53,7 +53,7 @@ Platform marketplace cuci sepatu on-demand berbasis radius lokasi. Menghubungkan
 - **Frontend**: Next.js 14 App Router, TypeScript, Tailwind CSS
 - **Visual Canvas**: @xyflow/react + Dagre Layout Engine
 - **Database**: MongoDB Atlas dengan Indexing GeoJSON (2dsphere)
-- **AI Runtime**: Multi-Agent Planner + Parallel Section Writers via SSE
+- **AI Runtime**: Planner + 11 Section Writers di Worker
 
 ## 3. Diagram Alur Transaksi (Mermaid)
 \`\`\`mermaid
@@ -324,7 +324,7 @@ export default function ProductShowcase() {
                         <span>{showCode ? "Tampilkan Diagram Visual" : "Lihat Sintaks Kode"}</span>
                       </button>
                       <span className="text-[#8EA690] text-[10px] font-mono hidden sm:inline">
-                        Auto-Repaired via LLM
+                        Preview Mermaid Manual
                       </span>
                     </div>
                   </div>
